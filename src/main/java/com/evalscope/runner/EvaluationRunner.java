@@ -8,6 +8,7 @@ import com.evalscope.evaluator.Evaluator;
 import com.evalscope.evaluator.EvaluationResult;
 import com.evalscope.evaluator.EvaluationData;
 import com.evalscope.model.Model;
+import com.evalscope.model.ModelFactory;
 import com.evalscope.benchmark.Benchmark;
 import com.evalscope.benchmark.BenchmarkResult;
 
@@ -147,9 +148,21 @@ public class EvaluationRunner {
     }
 
     private Model createModel(ModelConfig config) {
-        // In a real implementation, this would create the appropriate model based on config
-        // For now, we'll create a mock model
-        return new MockChatModel(config.getModelId(), config.getModelType());
+        try {
+            // 使用ModelFactory根据配置参数自适应创建模型
+            return ModelFactory.createModel(config);
+        } catch (Exception e) {
+            System.err.println("Failed to create model from factory: " + e.getMessage());
+            System.err.println("Config: " + config.getModelId() + " (provider: " + config.getProvider() + ", type: " + config.getModelType() + ")");
+
+            // 如果Factory创建失败，检查是否启用了mock模型
+            if ("mock".equals(config.getProvider()) && config.isEnabled()) {
+                return new MockChatModel(config.getModelId(), config.getModelType());
+            }
+
+            // 如果配置未明确启用mock且factory失败，返回null让调用者处理
+            return null;
+        }
     }
 
     private EvaluationData createSampleEvaluationData() {

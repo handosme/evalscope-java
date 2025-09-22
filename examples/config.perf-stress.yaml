@@ -1,0 +1,376 @@
+# EvalScope 配置文件 - Perf性能分析压测示例
+# 使用Linux perf工具进行系统级性能分析，结合EvalScope压测
+# 参考: https://evalscope.readthedocs.io/zh-cn/latest/user_guides/stress_test/parameters.html
+
+evaluations:
+  # 1. CPU性能压测分析
+  perf_cpu_stress:
+    evaluationName: "perf_cpu_stress"
+    evaluatorTypes: ["chat"]
+    maxConcurrency: 50
+    datasetPath: "datasets/general_qa.json"
+    saveResults: true
+    resultFormat: "json"
+    outputPath: "results/perf-cpu-stress/"
+    parameters:
+      # 基础压测参数
+      max_examples: 1000
+      number: 200
+      rounds: 5
+      concurrent: 50
+      max_workers: 100
+      connect_timeout: 30
+      read_timeout: 60
+      max_retries: 3
+      retry_delay: 1000
+
+      # 模型请求参数（专注CPU性能）
+      max_tokens: 256                    # 适中token减少网络影响
+      temperature: 0.1                    # 低温度提高一致性
+      top_p: 0.9
+      frequency_penalty: 0.0
+      presence_penalty: 0.0
+      request_timeout: 45
+
+      # 评估指标（专注性能指标）
+      metrics: "latency,throughput,error_rate,cpu_usage"
+      include_latency: true
+      include_accuracy: false             # CPU测试不关注准确性
+      latency_percentiles: [50, 95, 99, 99.9]
+
+      # 速率限制（避免过度限制）
+      requests_per_second: 25
+      requests_per_minute: 1500
+
+      # CPU性能专项参数
+      cpu_focus: true                    # 专注CPU分析
+      cpu_intensive: true                # CPU密集型负载
+      gc_monitoring: true                # GC监控
+      thread_monitoring: true            # 线程监控
+
+      # 测试模式
+      debug: false
+      verbose: true
+      progress_bar: true
+
+      # perf事件配置
+      perf_events: "cpu-clock,instructions,cache-misses,branch-misses"
+      perf_sampling_frequency: 99        # 99Hz采样频率
+      perf_call_graph: true              # 收集调用图
+
+  # 2. 内存性能压测分析
+  perf_memory_stress:
+    evaluationName: "perf_memory_stress"
+    evaluatorTypes: ["chat"]
+    maxConcurrency: 30
+    datasetPath: "datasets/general_qa.json"
+    saveResults: true
+    resultFormat: "json"
+    outputPath: "results/perf-memory-stress/"
+    parameters:
+      # 基础压测参数
+      max_examples: 500
+      number: 100
+      rounds: 3
+      concurrent: 30
+      max_workers: 60
+      connect_timeout: 60             # 内存测试可能需要更长超时
+      read_timeout: 120
+      max_retries: 3
+      retry_delay: 2000
+
+      # 模型请求参数（大token触发内存分配）
+      max_tokens: 2048                  # 大token数触发内存分配
+      temperature: 0.1
+      top_p: 0.9
+      frequency_penalty: 0.0
+      presence_penalty: 0.0
+      request_timeout: 90
+
+      # 评估指标（专注内存指标）
+      metrics: "latency,memory_usage,gc_activity,allocation_rate"
+      memory_tracking: true             # 启用内存跟踪
+      gc_tracking: true                 # 启用GC跟踪
+      heap_monitoring: true             # 堆监控
+      allocation_tracking: true         # 分配跟踪
+
+      # 速率限制
+      requests_per_second: 15
+      requests_per_minute: 900
+
+      # 内存专项参数
+      memory_pressure_mb: 2000          # 内存压力测试(2GB)
+      allocation_frequency: "high"
+      gc_pressure: true                 # GC压力测试
+      memory_leak_detection: true       # 内存泄漏检测
+
+      # perf内存事件
+      perf_events: "cache-misses,page-faults,major-faults,minor-faults"
+      perf_memory_sampling: true        # 内存访问采样
+
+  # 3. I/O性能压测分析
+  perf_io_stress:
+    evaluationName: "perf_io_stress"
+    evaluatorTypes: ["chat"]
+    maxConcurrency: 40
+    datasetPath: "datasets/general_qa.json"
+    saveResults: true
+    resultFormat: "json"
+    outputPath: "results/perf-io-stress/"
+    parameters:
+      # 基础压测参数
+      max_examples: 800
+      number: 150
+      rounds: 4
+      concurrent: 40
+      max_workers: 80
+      connect_timeout: 15             # I/O测试较短超时
+      read_timeout: 30
+      max_retries: 5                  # I/O测试可能需重试
+      retry_delay: 500
+
+      # 模型请求参数
+      max_tokens: 512
+      temperature: 0.3
+      top_p: 0.95
+      frequency_penalty: 0.1
+      presence_penalty: 0.1
+      request_timeout: 45
+
+      # 评估指标（专注I/O指标）
+      metrics: "latency,iowait,network_bytes,connection_pool_stats"
+      io_monitoring: true               # I/O监控
+      connection_pooling: true          # 连接池监控
+      network_tracking: true            # 网络跟踪
+      socket_monitoring: true           # socket监控
+
+      # 速率限制（模拟网络拥塞）
+      requests_per_second: 20
+      requests_per_minute: 1200
+      burst_requests: 50               # 突发请求数
+
+      # I/O专项参数
+      io_wait_simulation: true          # I/O等待模拟
+      network_latency_simulation: true  # 网络延迟模拟
+      connection_stress: true           # 连接压力
+
+      # perf I/O事件
+      perf_events: "block:block_rq_issue,block:block_rq_complete,syscalls:sys_enter_read"
+
+  # 4. 综合性能压测（高并发）
+  perf_comprehensive_stress:
+    evaluationName: "perf_comprehensive_stress"
+    evaluatorTypes: ["chat"]
+    maxConcurrency: 100
+    datasetPath: "datasets/general_qa.json"
+    saveResults: true
+    resultFormat: "json"
+    outputPath: "results/perf-comprehensive-stress/"
+    parameters:
+      # 极限压测参数
+      max_examples: 2000
+      number: 500
+      rounds: 3
+      concurrent: 100
+      max_workers: 200
+      connect_timeout: 30
+      read_timeout: 90
+      max_retries: 3
+      retry_delay: 1000
+
+      # 模型请求参数
+      max_tokens: 1024
+      temperature: 0.5
+      top_p: 0.9
+      frequency_penalty: 0.1
+      presence_penalty: 0.1
+      request_timeout: 120
+
+      # 全指标收集
+      metrics: "latency,throughput,error_rate,cpu_usage,memory_usage,gc_activity,iowait"
+      comprehensive_monitoring: true    # 全面监控
+      system_metrics: true               # 系统指标
+      jvm_metrics: true                  # JVM指标
+      process_metrics: true              # 进程指标
+
+      # 无速率限制（极限压测）
+      requests_per_second: -1            # 无限制
+      requests_per_minute: -1
+      adaptive_rate: true                # 自适应速率
+
+      # 综合perf事件
+      perf_events: "cpu-clock,task-clock,instructions,cache-misses,page-faults,context-switches"
+      perf_flame_graph: true             # 生成火焰图
+      perf_stat_interval: 10             # perf stat间隔
+
+datasets:
+  # 标准问答数据集
+  general_qa:
+    format: "json"
+    path: "datasets/general_qa.json"
+    parameters:
+      shuffle: true
+      limit: 2000
+      validate: true
+
+  # CPU测试专用数据集（短问题）
+  cpu_test:
+    format: "json"
+    path: "datasets/cpu_test.json"
+    parameters:
+      shuffle: true
+      limit: 1000
+      validate: true
+      questions_per_sample: 1      # 每次1个问题
+
+  # 内存测试专用数据集（长回答）
+  memory_test:
+    format: "json"
+    path: "datasets/memory_test.json"
+    parameters:
+      shuffle: true
+      limit: 500
+      validate: true
+      min_response_length: 1000   # 最小回应长度
+
+models:
+  # 1. CPU性能测试模型
+  perf_cpu_model:
+    modelId: "perf-cpu-model"
+    modelType: "chat"
+    provider: "mock"
+    enabled: true
+    parameters:
+      endpoint: "mock://localhost:8080"
+      max_tokens: 256
+      temperature: 0.1
+      top_p: 0.9
+      frequency_penalty: 0.0
+      presence_penalty: 0.0
+      response_delay_ms: 5         # 微小延迟
+      simulate_cpu_load: true      # 模拟CPU负载
+      cpu_intensive_ratio: 0.8     # 80% CPU密集型操作
+    credentials:
+      mock_auth: "perf-cpu"
+
+  # 2. 内存性能测试模型
+  perf_memory_model:
+    modelId: "perf-memory-model"
+    modelType: "chat"
+    provider: "mock"
+    enabled: true
+    parameters:
+      endpoint: "mock://localhost:8081"
+      max_tokens: 2048
+      temperature: 0.1
+      top_p: 0.9
+      frequency_penalty: 0.0
+      presence_penalty: 0.0
+      response_delay_ms: 100
+      simulate_memory_allocation: true  # 模拟内存分配
+      memory_allocation_mb: 25          # 每次分配25MB
+      gc_pressure: true                 # 产生GC压力
+    credentials:
+      mock_auth: "perf-memory"
+
+  # 3. I/O性能测试模型
+  perf_io_model:
+    modelId: "perf-io-model"
+    modelType: "chat"
+    provider: "mock"
+    enabled: true
+    parameters:
+      endpoint: "mock://localhost:8082"
+      max_tokens: 512
+      temperature: 0.1
+      top_p: 0.9
+      frequency_penalty: 0.1
+      presence_penalty: 0.1
+      response_delay_ms: 150        # I/O等待模拟
+      simulate_io_wait: true        # 模拟I/O等待
+      io_operations_per_request: 20
+    credentials:
+      mock_auth: "perf-io"
+
+  # 4. 综合性能测试模型
+  perf_comprehensive_model:
+    modelId: "perf-comprehensive-model"
+    modelType: "chat"
+    provider: "mock"
+    enabled: true
+    parameters:
+      endpoint: "mock://localhost:8083"
+      max_tokens: 1024
+      temperature: 0.3
+      top_p: 0.9
+      frequency_penalty: 0.1
+      presence_penalty: 0.1
+      response_delay_ms: 75
+      mixed_workload: true           # 混合工作负载
+      thread_contention: true        # 线程竞争
+      cpu_memory_ratio: "50:50"      # CPU和内存对半开
+    credentials:
+      mock_auth: "perf-comprehensive"
+
+# 系统配置
+system:
+  log_level: "INFO"
+  output_prettify: true
+  performance_tracking: true
+
+  # 结果存储配置
+  result_storage:
+    type: "local"
+    path: "results/perf-stress/"
+    format: "json"
+
+  # 指标收集配置（高频收集）
+  metrics:
+    collection_interval: 1          # 1秒收集间隔
+    retention_days: 30
+    export_format: "json"
+
+  # 连接池配置（高并发优化）
+  connection_pool:
+    max_connections: 300
+    connection_timeout: 30
+    read_timeout: 60
+    retry_attempts: 5
+    backoff_multiplier: 2.0
+
+  # perf集成配置
+  perf_integration:
+    enabled: true                    # 启用perf集成
+    perf_path: "/usr/bin/perf"       # perf工具路径
+    call_graph_fp: true              # 帧指针调用图
+    max_stack_depth: 127             # 最大栈深度
+
+  # 性能调优参数
+  performance_tuning:
+    jvm_flags: |
+      -Xms4g -Xmx8g
+      -XX:+UseG1GC
+      -XX:MaxGCPauseMillis=200
+      -XX:+UnlockDiagnosticVMOptions
+      -XX:+DebugNonSafepoints
+      -XX:+PreserveFramePointer    # perf兼容性
+
+    system_limits:
+      max_file_descriptors: 65536
+      max_processes: 16384
+
+# 使用说明:
+# 1. 基本CPU压测并记录perf数据:
+#    evalscope run --config examples/config.perf-stress.yaml --evaluation perf_cpu_stress
+#
+# 2. 内存压测并收集perf事件:
+#    perf stat -e cache-misses,page-faults evalscope run --config examples/config.perf-stress.yaml --evaluation perf_memory_stress
+#
+# 3. 全面压测并生成火焰图:
+#    perf record -F 99 -g -- evalscope run --config examples/config.perf-stress.yaml --evaluation perf_comprehensive_stress
+#    perf script | stackcollapse-perf.pl | flamegraph.pl > perf-flamegraph.svg
+#
+# 4. 多并发级别压测:
+#    for concurrent in 10 25 50 100; do
+#      evalscope run --config examples/config.perf-stress.yaml --evaluation perf_comprehensive_stress --concurrent $concurrent
+#    done

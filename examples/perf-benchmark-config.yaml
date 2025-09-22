@@ -1,0 +1,340 @@
+# EvalScope Perf性能基准测试专用配置
+# 专为Linux perf工具性能分析优化
+
+evalscope:
+  # ======================== 模型配置 ========================
+  models:
+    # 模型1: 轻量级Mock模型 (CPU性能测试)
+    perf-mock-cpu:
+      type: "chat"
+      provider: "mock"
+      enabled: true
+      parameters:
+        endpoint: "mock://localhost:8080"
+        max_tokens: 256
+        temperature: 0.1
+        response_delay_ms: 10      # 极小延迟，专注CPU性能
+        response_variation_ms: 5
+        success_rate: 0.99
+        simulate_cpu_load: true    # 模拟CPU负载
+        cpu_intensive_operations: 1000  # CPU密集型操作次数
+      credentials:
+        mock_auth: "perf-cpu"
+
+    # 模型2: 内存分配测试模型
+    perf-mock-memory:
+      type: "chat"
+      provider: "mock"
+      enabled: true
+      parameters:
+        endpoint: "mock://localhost:8081"
+        max_tokens: 2048           # 大token测试内存分配
+        temperature: 0.1
+        response_delay_ms: 50
+        response_variation_ms: 20
+        success_rate: 0.98
+        simulate_memory_allocation: true  # 模拟内存分配
+        memory_allocation_mb: 50   # 每次分配50MB
+        gc_pressure: true          # 产生GC压力
+      credentials:
+        mock_auth: "perf-memory"
+
+    # 模型3: I/O性能测试模型
+    perf-mock-io:
+      type: "chat"
+      provider: "mock"
+      enabled: true
+      parameters:
+        endpoint: "mock://localhost:8082"
+        max_tokens: 512
+        temperature: 0.1
+        response_delay_ms: 200     # I/O等待模拟
+        response_variation_ms: 100
+        success_rate: 0.95
+        simulate_io_wait: true     # 模拟I/O等待
+        io_operations_per_request: 50
+      credentials:
+        mock_auth: "perf-io"
+
+    # 模型4: 并发性能测试模型
+    perf-mock-concurrent:
+      type: "chat"
+      provider: "mock"
+      enabled: true
+      parameters:
+        endpoint: "mock://localhost:8083"
+        max_tokens: 1024
+        temperature: 0.1
+        response_delay_ms: 100
+        response_variation_ms: 50
+        success_rate: 0.99
+        thread_contention: true    # 模拟线程竞争
+        lock_contention_probability: 0.1  # 10%锁竞争
+      credentials:
+        mock_auth: "perf-concurrent"
+
+  # ======================== Perf专用性能评估 ========================
+  evaluations:
+    # CPU性能基准测试 (perf分析专用)
+    perf_cpu_analysis:
+      models: ["perf-mock-cpu"]
+      evaluators: ["chat"]
+      maxConcurrency: 10
+      saveResults: true
+      outputPath: "perf-results/cpu-analysis"
+      parameters:
+        max_examples: 100
+        timeout_seconds: 30
+        warmup_iterations: 10
+        test_iterations: 500
+        concurrent_levels: [1, 5, 10]      # 不同并发级别
+        benchmark_focus: "cpu_cycles"      # 专注CPU周期
+        cpu_intensive_ratio: 0.8            # 80%CPU密集型操作
+        perf_events: "cpu-clock,cache-misses,instructions"  # perf事件
+
+    # 内存性能基准测试
+    perf_memory_analysis:
+      models: ["perf-mock-memory"]
+      evaluators: ["chat"]
+      maxConcurrency: 5
+      saveResults: true
+      outputPath: "perf-results/memory-analysis"
+      parameters:
+        max_examples: 50
+        timeout_seconds: 60
+        warmup_iterations: 5
+        test_iterations: 200
+        concurrent_levels: [1, 3, 5]
+        benchmark_focus: "memory_allocation"
+        memory_pressure_mb: 1000            # 1000MB内存压力
+        allocation_frequency: "high"        # 高频分配
+        perf_events: "cache-misses,page-faults,minor-faults,major-faults"
+
+    # I/O性能基准测试
+    perf_io_analysis:
+      models: ["perf-mock-io"]
+      evaluators: ["chat"]
+      maxConcurrency: 15
+      saveResults: true
+      outputPath: "perf-results/io-analysis"
+      parameters:
+        max_examples: 80
+        timeout_seconds: 45
+        warmup_iterations: 8
+        test_iterations: 300
+        concurrent_levels: [5, 10, 15]
+        benchmark_focus: "io_latency"
+        io_wait_simulation: true
+        disk_io_simulation: false           # 专注网络I/O
+        perf_events: "block:block_rq_issue,block:block_rq_complete"
+
+    # 并发竞争分析
+    perf_contention_analysis:
+      models: ["perf-mock-concurrent"]
+      evaluators: ["chat"]
+      maxConcurrency: 20
+      saveResults: true
+      outputPath: "perf-results/contention-analysis"
+      parameters:
+        max_examples: 120
+        timeout_seconds: 25
+        warmup_iterations: 15
+        test_iterations: 400
+        concurrent_levels: [10, 15, 20]
+        benchmark_focus: "lock_contention"
+        thread_contention_simulation: true
+        lock_analysis: true                 # 锁竞争分析
+        perf_events: "sched:sched_switch,lock:lock_acquire"
+
+    # 综合性能压力测试 (perf综合)
+    perf_stress:
+      models: ["perf-mock-cpu", "perf-mock-memory", "perf-mock-io", "perf-mock-concurrent"]
+      evaluators: ["chat"]
+      maxConcurrency: 50
+      saveResults: true
+      outputPath: "perf-results/comprehensive-stress"
+      parameters:
+        max_examples: 200
+        timeout_seconds: 120
+        warmup_iterations: 20
+        test_iterations: 1000
+        concurrent_levels: [10, 25, 50]
+        load_pattern: "step_ramp"           # 阶梯式增压
+        duration_minutes: 30
+        mixed_workload: true                # 混合工作负载
+        cpu_memory_ratio: "60:40"           # CPU:内存 = 60:40
+        perf_events: "cpu-clock,task-clock,page-faults,cache-misses"
+        flame_graph_enabled: true           # 启用火焰图
+
+    # JVM性能专项测试
+    perf_jvm_analysis:
+      models: ["perf-mock-cpu"]
+      evaluators: ["chat"]
+      maxConcurrency: 8
+      saveResults: true
+      outputPath: "perf-results/jvm-analysis"
+      parameters:
+        max_examples: 150
+        timeout_seconds: 40
+        warmup_iterations: 12
+        test_iterations: 600
+        concurrent_levels: [2, 4, 8]
+        benchmark_focus: "jvm_internal"
+        gc_analysis: true                   # GC分析
+        jit_analysis: true                  # JIT分析
+        heap_profiling: true               # 堆分析
+        jvm_flags: "-XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints"
+        perf_events: "cpu-clock,instructions,cache-misses,branches"
+
+  # ======================== Perf专用监控设置 ========================
+  settings:
+    # 基础性能设置
+    max_job_concurrency: 20
+    response_timeout_seconds: 120
+    result_format: "json"
+    log_level: "INFO"
+    debug_memory_info: true              # 调试内存信息
+
+    # perf集成配置
+    perf_integration:
+      enabled: true
+      perf_events_preset: "cpu,memory,cache"  # 预设事件组
+      sampling_frequency: 99                  # 采样频率(Hz)
+      call_graph_collection: true             # 收集调用图
+      user_space_only: false                  # 包含内核空间
+
+      # 性能事件详细配置
+      performance_events:
+        cpu_events:
+          - "cpu-clock"           # CPU时钟周期
+          - "task-clock"          # 任务时钟
+          - "instructions"        # 指令数
+          - "branches"            # 分支指令
+          - "branch-misses"       # 分支预测失败
+        memory_events:
+          - "cache-misses"        # 缓存未命中
+          - "cache-references"    # 缓存引用
+          - "L1-dcache-loads"     # L1数据缓存加载
+          - "LLC-loads"           # 最后一级缓存加载
+          - "page-faults"         # 页面错误
+        system_events:
+          - "context-switches"    # 上下文切换
+          - "cpu-migrations"      # CPU迁移
+          - "minor-faults"        # 轻微页面错误
+          - "major-faults"        # 严重页面错误
+
+      # 调用栈和火焰图设置
+      call_graph_config:
+        fp_mode: true              # 帧指针模式(更精确)
+        dwarf_mode: false          # DWARF模式(备选)
+        max_stack_depth: 127       # 最大栈深度
+        flame_graph_enabled: true  # 启用火焰图
+
+      # 系统级监控
+      system_monitoring:
+        cpu_utilization: true     # CPU使用率
+        memory_usage: true        # 内存使用
+        io_statistics: true       # I/O统计
+        network_stats: true       # 网络统计
+
+      # 进程级监控
+      process_monitoring:
+        thread_stats: true        # 线程统计
+        file_descriptors: true   # 文件描述符
+        memory_maps: true        # 内存映射
+        perf_stat_interval: 1    # perf stat采样间隔(秒)
+
+    # JVM性能调优建议
+    jvm_optimization:
+      heap_sizing: "adaptive"     # 自适应堆大小
+      gc_tuning: "throughput"     # 吞吐量优先GC
+      compiler_optimization: true # 编译优化
+      profile_guided: false       # 引导优化
+
+      # 推荐JVM参数
+      recommended_flags:
+        - "-XX:+UseG1GC"                    # G1垃圾收集器
+        - "-XX:MaxGCPauseMillis=200"       # GC暂停时间目标
+        - "-XX:+UnlockDiagnosticVMOptions"  # 诊断选项
+        - "-XX:+DebugNonSafepoints"         # 调试非安全点
+        - "-XX:+PreserveFramePointer"       # 保留帧指针(perf兼容性)
+        - "-XX:-TieredCompilation"          # 禁用分层编译(测试时)
+
+    # 性能阈值设置
+    performance_thresholds:
+      cpu_usage_percent: 80       # CPU使用率警告阈值
+      memory_usage_mb: 4000       # 内存使用警告阈值
+      response_time_ms: 5000      # 响应时间警告阈值
+      error_rate_percent: 1.0     # 错误率警告阈值
+
+    # 企业集成扩展
+    enterprise:
+      prometheus_metrics_enabled: true
+      grafana_dashboards: true
+      alerting:
+        slack_webhook: "${SLACK_WEBHOOK_URL}"
+        thresholds:
+          cpu_cycles_per_instruction: 2.0    # CPI阈值
+          cache_miss_rate_percent: 5.0       # 缓存未命中率阈值
+          memory_bandwidth_utilization: 80  # 内存带宽利用率阈值
+
+## 🔧 使用说明
+
+### 基本perf性能分析
+```bash
+# 运行CPU性能分析
+sudo perf stat -e cpu-clock,instructions,cache-misses \
+  java -jar target/evalscope-*.jar --config examples/perf-benchmark-config.yaml
+
+# 运行完整的perf测试脚本
+./examples/perf-benchmark.sh
+```
+
+### 火焰图生成
+```bash
+# 安装FlameGraph工具
+git clone https://github.com/brendangregg/FlameGraph.git
+
+# 生成火焰图
+perf script -i perf-results/cpu-analysis/perf_*.data | \
+  ~/FlameGraph/stackcollapse-perf.pl | \
+  ~/FlameGraph/flamegraph.pl > flamegraph.svg
+```
+
+### 性能分析要点
+1. **CPU周期(CPI)**: 每条指令需要的CPU周期数
+2. **缓存命中率**: L1/L2/LLC缓存命中情况
+3. **分支预测失败率**: 分支预测准确性
+4. **内存带宽利用率**: 内存子系统效率
+5. **锁竞争**: 线程同步开销
+
+### 系统级性能调优
+```bash
+# CPU调优
+echo performance > /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+
+# 内存调优
+echo 1 > /proc/sys/vm/drop_caches  # 清除缓存
+
+# Perf权限设置
+echo -1 > /proc/sys/kernel/perf_event_paranoid
+```
+
+## 📊 性能指标解读
+
+### CPU性能指标
+- **CPI (Cycles Per Instruction)**: < 1.0 优秀, > 2.0 需要优化
+- **Cache Miss Rate**: < 5% 良好, > 10% 需要关注
+- **Branch Prediction**: > 90% 良好, < 80% 需要优化
+
+### 内存性能指标
+- **Page Fault Rate**: 越低越好
+- **Memory Bandwidth**: 利用率 < 80%
+- **TLB Miss Rate**: 越低越好
+
+### 并发性能指标
+- **Lock Contention**: 锁等待时间 < 5%
+- **Context Switch Rate**: 避免过度上下文切换
+- **CPU Migration**: 减少跨CPU迁移
+
+这套配置为生产环境的AI服务提供了系统级的性能分析框架！🔥
