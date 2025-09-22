@@ -2,7 +2,7 @@
 
 ## 项目概览
 
-这是一个完整的Java实现版本的 EvalScope AI 模型评测框架，支持：
+这是一个基于Java 8的完整实现版本的 EvalScope AI 模型评测框架，支持：
 
 - 🎯 多模型类型支持（Chat、Embedding等）
 - 📊 多种评估方法和指标
@@ -94,8 +94,13 @@ configManager.addModelConfig(modelConfig);
 
 // 配置评测
 EvaluationConfig evalConfig = new EvaluationConfig("my-evaluation");
-evalConfig.setModelIds(Arrays.asList("my-model"));
-evalConfig.setEvaluatorTypes(Arrays.asList("chat", "performance"));
+List<String> modelIds = new ArrayList<>();
+modelIds.add("my-model");
+evalConfig.setModelIds(modelIds);
+List<String> evaluatorTypes = new ArrayList<>();
+evaluatorTypes.add("chat");
+evaluatorTypes.add("performance");
+evalConfig.setEvaluatorTypes(evaluatorTypes);
 configManager.addEvaluationConfig(evalConfig);
 
 // 运行评测
@@ -210,6 +215,17 @@ evalscope {
 
 注意: 如果同时存在 application.yaml 和 application.conf，application.yaml 将优先被使用。
 
+## Java 8 兼容性说明
+
+本项目完全基于Java 8开发，确保了在Java 8环境中的兼容性。特别注意以下几点：
+
+1. **集合操作**: 使用传统ArrayList和显式添加元素，而非Java 9+的集合工厂方法
+2. **流API使用**: 仅使用Java 8中提供的Stream API功能
+3. **依赖版本**: 所有依赖库版本均选择与Java 8兼容的版本
+4. **并发工具**: 使用Java 8中的并发工具和ExecutorService
+
+示例代码均已按Java 8标准编写，无需更高版本Java特性即可运行。
+
 ## 扩展功能
 
 ### 添加新的评估器
@@ -310,4 +326,4 @@ evalscope-java/
 └── pom.xml
 ```
 
-这个Java版的EvalScope提供了完整的AI模型评测功能，可以作为生产环境的基础框架进行扩展。
+这个基于Java 8的EvalScope提供了完整的AI模型评测功能，可以作为生产环境的基础框架进行扩展，同时保证了在Java 8环境中的完全兼容性。
