@@ -1,6 +1,7 @@
 package com.evalscope.runner;
 
 import com.evalscope.config.ConfigManager;
+import com.evalscope.config.IConfigManager;
 import com.evalscope.config.EvaluationConfig;
 import com.evalscope.config.ModelConfig;
 import com.evalscope.evaluator.Evaluator;
@@ -16,15 +17,15 @@ import java.util.Map;
 import java.util.concurrent.*;
 
 public class EvaluationRunner {
-    private final ConfigManager configManager;
+    private final com.evalscope.config.IConfigManager configManager;
     private final ExecutorService executorService;
 
-    public EvaluationRunner(ConfigManager configManager) {
+    public EvaluationRunner(IConfigManager configManager) {
         this.configManager = configManager;
         this.executorService = Executors.newCachedThreadPool();
     }
 
-    public EvaluationRunner(ConfigManager configManager, int maxConcurrency) {
+    public EvaluationRunner(IConfigManager configManager, int maxConcurrency) {
         this.configManager = configManager;
         this.executorService = Executors.newFixedThreadPool(maxConcurrency);
     }

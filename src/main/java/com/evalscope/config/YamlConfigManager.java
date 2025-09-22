@@ -2,7 +2,6 @@ package com.evalscope.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 
@@ -15,23 +14,23 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Properties;
+import org.yaml.snakeyaml.Yaml;
 
 /**
  * Enhanced ConfigManager with YAML support
  */
-public class YamlConfigManager {
+public class YamlConfigManager implements IConfigManager {
     private static final String YAML_CONFIG_FILE = "application.yaml";
     private static final String DEFAULT_CONFIG_FILE = "application.conf";
 
     private Config typesafeConfig;
     private ObjectMapper objectMapper;
-    private ObjectMapper yamlMapper;
     private Map<String, ModelConfig> modelConfigs;
     private Map<String, EvaluationConfig> evaluationConfigs;
 
     public YamlConfigManager() {
         this.objectMapper = new ObjectMapper();
-        this.yamlMapper = new ObjectMapper(new YAMLFactory());
         this.modelConfigs = new HashMap<>();
         this.evaluationConfigs = new HashMap<>();
         loadDefaultConfig();
@@ -46,11 +45,8 @@ public class YamlConfigManager {
         // Try to load YAML config first
         try (InputStream yamlStream = getClass().getClassLoader().getResourceAsStream(YAML_CONFIG_FILE)) {
             if (yamlStream != null) {
-                JsonNode yamlNode = yamlMapper.readTree(yamlStream);
+                parseYamlConfig(yamlStream);
                 System.out.println("Loaded configuration from " + YAML_CONFIG_FILE);
-
-                // Convert YAML JSON structure to Config object for backward compatibility
-                parseYamlConfigs(yamlNode);
                 return;
             }
         } catch (Exception e) {
@@ -63,35 +59,131 @@ public class YamlConfigManager {
         parseConfigs();
     }
 
+    private void parseYamlConfig(InputStream yamlStream) throws IOException {
+        Yaml yaml = new Yaml();
+        Map<String, Object> yamlData = yaml.load(yamlStream);
+
+        if (yamlData != null && yamlData.containsKey("evalscope")) {
+            Map<String, Object> evalscopeData = (Map<String, Object>) yamlData.get("evalscope");
+
+            // Parse models
+            if (evalscopeData.containsKey("models")) {
+                Map<String, Object> modelsData = (Map<String, Object>) evalscopeData.get("models");
+                for (Map.Entry<String, Object> entry : modelsData.entrySet()) {
+                    String modelId = entry.getKey();
+                    Map<String, Object> modelData = (Map<String, Object>) entry.getValue();
+
+                    try {
+                        ModelConfig config = parseYamlModelData(modelId, modelData);
+                        modelConfigs.put(modelId, config);
+                        System.out.println("Loaded YAML model configuration: " + modelId);
+                    } catch (Exception e) {
+                        System.err.println("Failed to parse YAML model config for " + modelId + ": " + e.getMessage());
+                    }
+                }
+            }
+
+            // Parse evaluations
+            if (evalscopeData.containsKey("evaluations")) {
+                Map<String, Object> evaluationsData = (Map<String, Object>) evalscopeData.get("evaluations");
+                for (Map.Entry<String, Object> entry : evaluationsData.entrySet()) {
+                    String evaluationName = entry.getKey();
+                    Map<String, Object> evalData = (Map<String, Object>) entry.getValue();
+
+                    try {
+                        EvaluationConfig config = parseYamlEvaluationData(evaluationName, evalData);
+                        evaluationConfigs.put(evaluationName, config);
+                        System.out.println("Loaded YAML evaluation configuration: " + evaluationName);
+                    } catch (Exception e) {
+                        System.err.println("Failed to parse YAML evaluation config for " + evaluationName + ": " + e.getMessage());
+                    }
+                }
+            }
+        } else {
+            throw new IOException("Invalid YAML structure: missing 'evalscope' section");
+        }
+    }
+
+    private ModelConfig parseYamlModelData(String modelId, Map<String, Object> modelData) {
+        String modelType = (String) modelData.getOrDefault("type", "chat");
+        String provider = (String) modelData.getOrDefault("provider", "unknown");
+
+        ModelConfig config = new ModelConfig(modelId, modelType, provider);
+
+        if (modelData.containsKey("parameters")) {
+            Map<String, Object> parameters = (Map<String, Object>) modelData.get("parameters");
+            config.setParameters(parameters);
+        }
+
+        if (modelData.containsKey("credentials")) {
+            Map<String, Object> credentials = (Map<String, Object>) modelData.get("credentials");
+            config.setCredentials(credentials);
+        }
+
+        if (modelData.containsKey("enabled")) {
+            config.setEnabled((Boolean) modelData.get("enabled"));
+        }
+
+        return config;
+    }
+
+    private EvaluationConfig parseYamlEvaluationData(String evaluationName, Map<String, Object> evalData) {
+        EvaluationConfig config = new EvaluationConfig(evaluationName);
+
+        if (evalData.containsKey("models")) {
+            List<String> modelIds = (List<String>) evalData.get("models");
+            config.setModelIds(modelIds);
+        }
+
+        if (evalData.containsKey("evaluators")) {
+            List<String> evaluatorTypes = (List<String>) evalData.get("evaluators");
+            config.setEvaluatorTypes(evaluatorTypes);
+        }
+
+        if (evalData.containsKey("maxConcurrency")) {
+            config.setMaxConcurrency((Integer) evalData.get("maxConcurrency"));
+        }
+
+        if (evalData.containsKey("saveResults")) {
+            config.setSaveResults((Boolean) evalData.get("saveResults"));
+        }
+
+        if (evalData.containsKey("outputPath")) {
+            config.setOutputPath((String) evalData.get("outputPath"));
+        }
+
+        if (evalData.containsKey("parameters")) {
+            Map<String, Object> parameters = (Map<String, Object>) evalData.get("parameters");
+            config.setParameters(parameters);
+        }
+
+        return config;
+    }
+
     private void loadConfigFile(String configFilePath) {
         try {
             if (configFilePath.endsWith(".yaml") || configFilePath.endsWith(".yml")) {
-                loadYamlFromFile(configFilePath);
+                Path path = Paths.get(configFilePath);
+                InputStream inputStream;
+
+                if (Files.exists(path)) {
+                    inputStream = Files.newInputStream(path);
+                } else {
+                    inputStream = getClass().getClassLoader().getResourceAsStream(configFilePath);
+                }
+
+                if (inputStream != null) {
+                    parseYamlConfig(inputStream);
+                    inputStream.close();
+                } else {
+                    throw new IOException("Config file not found: " + configFilePath);
+                }
             } else {
                 loadHoconFromFile(configFilePath);
             }
         } catch (Exception e) {
             System.err.println("Failed to load config from " + configFilePath + ", using default: " + e.getMessage());
             loadDefaultConfig();
-        }
-    }
-
-    private void loadYamlFromFile(String configFilePath) throws IOException {
-        Path path = Paths.get(configFilePath);
-        InputStream inputStream;
-
-        if (Files.exists(path)) {
-            inputStream = Files.newInputStream(path);
-        } else {
-            inputStream = getClass().getClassLoader().getResourceAsStream(configFilePath);
-        }
-
-        if (inputStream != null) {
-            JsonNode yamlNode = yamlMapper.readTree(inputStream);
-            parseYamlConfigs(yamlNode);
-            inputStream.close();
-        } else {
-            throw new IOException("Config file not found: " + configFilePath);
         }
     }
 
@@ -114,125 +206,6 @@ public class YamlConfigManager {
             System.err.println("Failed to load HOCON config: " + e.getMessage());
             this.typesafeConfig = ConfigFactory.load();
             parseConfigs();
-        }
-    }
-
-    private void parseYamlConfigs(JsonNode yamlNode) {
-        if (yamlNode.has("evalscope")) {
-            JsonNode evalscopeNode = yamlNode.get("evalscope");
-            parseYamlModelConfigs(evalscopeNode);
-            parseYamlEvaluationConfigs(evalscopeNode);
-            parseYamlGlobalSettings(evalscopeNode);
-        }
-    }
-
-    private void parseYamlModelConfigs(JsonNode evalscopeNode) {
-        if (evalscopeNode.has("models")) {
-            JsonNode modelsNode = evalscopeNode.get("models");
-
-            modelsNode.fields().forEachRemaining(entry -> {
-                String modelId = entry.getKey();
-                JsonNode modelConfig = entry.getValue();
-
-                try {
-                    ModelConfig config = parseYamlModelConfig(modelId, modelConfig);
-                    modelConfigs.put(modelId, config);
-                    System.out.println("Loaded model configuration: " + modelId);
-                } catch (Exception e) {
-                    System.err.println("Failed to parse model config for " + modelId + ": " + e.getMessage());
-                }
-            });
-        }
-    }
-
-    private ModelConfig parseYamlModelConfig(String modelId, JsonNode configNode) {
-        String modelType = configNode.get("type").asText("chat");
-        String provider = configNode.get("provider").asText("unknown");
-
-        ModelConfig config = new ModelConfig(modelId, modelType, provider);
-
-        if (configNode.has("parameters")) {
-            JsonNode paramsNode = configNode.get("parameters");
-            Map<String, Object> parameters = objectMapper.convertValue(paramsNode, Map.class);
-            config.setParameters(parameters);
-        }
-
-        if (configNode.has("credentials")) {
-            JsonNode credsNode = configNode.get("credentials");
-            Map<String, Object> credentials = objectMapper.convertValue(credsNode, Map.class);
-            config.setCredentials(credentials);
-        }
-
-        if (configNode.has("enabled")) {
-            config.setEnabled(configNode.get("enabled").asBoolean(true));
-        }
-
-        return config;
-    }
-
-    private void parseYamlEvaluationConfigs(JsonNode evalscopeNode) {
-        if (evalscopeNode.has("evaluations")) {
-            JsonNode evaluationsNode = evalscopeNode.get("evaluations");
-
-            evaluationsNode.fields().forEachRemaining(entry -> {
-                String evaluationName = entry.getKey();
-                JsonNode evalConfig = entry.getValue();
-
-                try {
-                    EvaluationConfig config = parseYamlEvaluationConfig(evaluationName, evalConfig);
-                    evaluationConfigs.put(evaluationName, config);
-                    System.out.println("Loaded evaluation configuration: " + evaluationName);
-                } catch (Exception e) {
-                    System.err.println("Failed to parse evaluation config for " + evaluationName + ": " + e.getMessage());
-                }
-            });
-        }
-    }
-
-    private EvaluationConfig parseYamlEvaluationConfig(String evaluationName, JsonNode configNode) {
-        EvaluationConfig config = new EvaluationConfig(evaluationName);
-
-        if (configNode.has("models")) {
-            JsonNode modelsArray = configNode.get("models");
-            List<String> modelIds = new ArrayList<>();
-            modelsArray.forEach(node -> modelIds.add(node.asText()));
-            config.setModelIds(modelIds);
-        }
-
-        if (configNode.has("evaluators")) {
-            JsonNode evaluatorsArray = configNode.get("evaluators");
-            List<String> evaluatorTypes = new ArrayList<>();
-            evaluatorsArray.forEach(node -> evaluatorTypes.add(node.asText()));
-            config.setEvaluatorTypes(evaluatorTypes);
-        }
-
-        if (configNode.has("maxConcurrency")) {
-            config.setMaxConcurrency(configNode.get("maxConcurrency").asInt(1));
-        }
-
-        if (configNode.has("saveResults")) {
-            config.setSaveResults(configNode.get("saveResults").asBoolean(true));
-        }
-
-        if (configNode.has("outputPath")) {
-            config.setOutputPath(configNode.get("outputPath").asText());
-        }
-
-        if (configNode.has("parameters")) {
-            JsonNode paramsNode = configNode.get("parameters");
-            Map<String, Object> parameters = objectMapper.convertValue(paramsNode, Map.class);
-            config.setParameters(parameters);
-        }
-
-        return config;
-    }
-
-    private void parseYamlGlobalSettings(JsonNode evalscopeNode) {
-        if (evalscopeNode.has("settings")) {
-            JsonNode settingsNode = evalscopeNode.get("settings");
-            // Store global settings in typesafe config for compatibility
-            Config settingsConfig = ConfigFactory.parseString(settingsNode.toString());
-            // You can add global settings handling here if needed
         }
     }
 

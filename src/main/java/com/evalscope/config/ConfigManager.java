@@ -15,7 +15,7 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.HashMap;
 
-public class ConfigManager {
+public class ConfigManager implements IConfigManager {
     private static final String YAM_CONFIG_FILE = "application.yaml";
     private static final String DEFAULT_CONFIG_FILE = "application.conf";
 
