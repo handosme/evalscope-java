@@ -2,6 +2,9 @@ package com.evalscope.example;
 
 import com.evalscope.model.ChatModel;
 import com.evalscope.model.ModelResponse;
+import com.evalscope.model.ModelFactory;
+import com.evalscope.model.OpenAICompatibleModel;
+import com.evalscope.model.HuggingFaceModel;
 import com.evalscope.evaluator.Evaluator;
 import com.evalscope.evaluator.EvaluationResult;
 import com.evalscope.evaluator.EvaluationData;
@@ -14,304 +17,296 @@ import com.evalscope.runner.EvaluationReport;
 import java.util.*;
 
 /**
- * Example demonstrating how to create and evaluate a custom chat model.
+ * 真实AI模型连接和评估示例
+ * 演示如何使用真实的OpenAI API和HuggingFace Hub模型进行模型评估
+ * 类似于 https://github.com/modelscope/evalscope 的实现
  */
 public class CustomModelExample {
 
     public static void main(String[] args) {
-        System.out.println("=== Custom Model Example ===");
+        System.out.println("=== 真实AI模型连接和评估示例 ===");
+        System.out.println("基于 https://github.com/modelscope/evalscope 风格实现");
+        System.out.println();
 
-        // Set up configuration
+        // 设置配置管理器
         ConfigManager configManager = ConfigManager.createDefault();
 
-        // Configure your custom model
-        ModelConfig myModelConfig = new ModelConfig("my-smart-model", "chat", "custom");
-        myModelConfig.addParameter("intelligence_level", "high");
-        myModelConfig.addParameter("creativity", 0.8);
-        myModelConfig.setEnabled(true);
-        configManager.addModelConfig(myModelConfig);
-
-        // Configure evaluation
-        EvaluationConfig evalConfig = new EvaluationConfig("custom-model-evaluation");
-        evalConfig.setModelIds(Arrays.asList("my-smart-model"));
-        evalConfig.setEvaluatorTypes(Arrays.asList("chat"));
-        evalConfig.addParameter("max_examples", 10);
-        evalConfig.addParameter("similarity_threshold", 0.7);
-        configManager.addEvaluationConfig(evalConfig);
-
-        // Register custom model factory (in a real implementation)
-        // RunnerFactory.registerModel("custom", MySmartModel::new);
-
         try {
-            // Create runner and run evaluation
-            EvalScopeRunner runner = new EvalScopeRunner(configManager);
-            EvaluationReport report = runner.runEvaluation("custom-model-evaluation");
+            // 示例1: 配置并测试OpenAI GPT模型
+            configureOpenAIModel(configManager);
 
-            // Display results
-            System.out.println("\n=== Evaluation Results ===");
-            System.out.println("Report ID: " + report.getReportId());
-            System.out.println("Models evaluated: " + report.getTotalModels());
-            System.out.println("Summary: " + report.getSummary());
+            // 示例2: 配置并测试HuggingFace模型
+            configureHuggingFaceModel(configManager);
+
+            // 示例3: 配置本地部署模型（兼容OpenAI API）
+            configureLocalModel(configManager);
+
+            // 创建评估运行器并执行评估
+            EvalScopeRunner runner = new EvalScopeRunner(configManager);
+
+            // 执行OpenAI模型评估
+            runOpenAIEvaluation(runner);
+
+            // 执行HuggingFace模型评估
+            runHuggingFaceEvaluation(runner);
+
+            // 执行本地模型评估
+            runLocalEvaluation(runner);
+
+            // 运行批量对比评估
+            runBatchEvaluation(runner);
+
+            // 演示直接模型评估
+            directModelEvaluationDemo();
 
             runner.shutdown();
+            System.out.println("\n=== 所有评估任务完成 ===");
 
         } catch (Exception e) {
-            System.err.println("Evaluation failed: " + e.getMessage());
+            System.err.println("评估过程中发生错误: " + e.getMessage());
             e.printStackTrace();
         }
     }
 
     /**
-     * Example of a custom chat model implementation.
-     * In practice, this would connect to your actual AI model.
+     * 配置OpenAI GPT模型进行真实API调用
      */
-    public static class MySmartModel extends ChatModel {
-        private static final Map<String, String> KNOWLEDGE_BASE = new HashMap<>();
+    private static void configureOpenAIModel(ConfigManager configManager) {
+        System.out.println("正在配置 OpenAI GPT 模型...");
 
-        static {
-            KNOWLEDGE_BASE.put("2+2", "4");
-            KNOWLEDGE_BASE.put("capital of france", "Paris");
-            KNOWLEDGE_BASE.put("moon of earth", "The Moon");
-            KNOWLEDGE_BASE.put("rgb primary colors", "Red, Green, Blue");
-            KNOWLEDGE_BASE.put("pythagorean theorem", "a² + b² = c²");
+        // 创建OpenAI模型配置（需要真实的API key）
+        ModelConfig openaiConfig = new ModelConfig("gpt-3.5-turbo", "chat", "openai");
+
+        // OpenAI API基础配置，endpoint是必填字段，默认使用openai官方地址
+        openaiConfig.addParameter("endpoint", "https://api.openai.com/v1");
+        openaiConfig.addParameter("model_name", "gpt-3.5-turbo");
+
+        // 模型行为参数
+        openaiConfig.addParameter("max_tokens", 2048);
+        openaiConfig.addParameter("temperature", 0.7);
+        openaiConfig.addParameter("top_p", 0.9);
+
+        // 连接配置
+        openaiConfig.addParameter("connect_timeout", 30);
+        openaiConfig.addParameter("read_timeout", 60);
+        openaiConfig.addParameter("max_retries", 3);
+        openaiConfig.addParameter("retry_delay", 1000);
+
+        // 重要: API密钥应该通过环境变量或安全的配置管理获取
+        String apiKey = System.getenv("OPENAI_API_KEY");
+        if (apiKey == null || apiKey.trim().isEmpty()) {
+            System.err.println("警告: 未设置 OPENAI_API_KEY 环境变量，OpenAI模型将不会真正连接到API");
+            System.err.println("请执行: export OPENAI_API_KEY='your-api-key'");
+            apiKey = "sk-demo-key-please-set-real-key"; // 演示用
         }
 
-        public MySmartModel(String modelId, String modelType) {
-            super(modelId, modelType);
+        openaiConfig.addCredential("api_key", apiKey);
+        openaiConfig.setEnabled(true);
+
+        configManager.addModelConfig(openaiConfig);
+        System.out.println("OpenAI GPT-3.5-turbo 模型配置完成");
+    }
+
+    /**
+     * 配置HuggingFace Hub模型进行真实API调用
+     */
+    private static void configureHuggingFaceModel(ConfigManager configManager) {
+        System.out.println("正在配置 HuggingFace Hub 模型...");
+
+        // 创建HuggingFace模型配置
+        ModelConfig hfConfig = new ModelConfig("microsoft/DialoGPT-medium", "chat", "huggingface");
+
+        hfConfig.addParameter("model_name", "microsoft/DialoGPT-medium");
+        hfConfig.addParameter("endpoint", "https://api-inference.huggingface.co");
+
+        // HuggingFace模型通常需要更长的读取超时
+        hfConfig.addParameter("read_timeout", 120);
+        hfConfig.addParameter("connect_timeout", 30);
+        hfConfig.addParameter("max_retries", 5);
+        hfConfig.addParameter("retry_delay", 2000);
+
+        // 模型参数（HF格式）
+        hfConfig.addParameter("max_tokens", 512);
+        hfConfig.addParameter("temperature", 0.7);
+        hfConfig.addParameter("top_p", 0.9);
+        hfConfig.addParameter("top_k", 50);
+
+        // API Token设置（从环境变量获取更安全）
+        String apiToken = System.getenv("HF_API_TOKEN");
+        if (apiToken == null || apiToken.trim().isEmpty()) {
+            System.err.println("警告: 未设置 HF_API_TOKEN 环境变量，HuggingFace模型可能无法正常访问");
+            System.err.println("请执行: export HF_API_TOKEN='your-hf-token'");
+            // 某些公共模型可能不需要token
+            apiToken = "hf_demo_token";
         }
+        hfConfig.addCredential("api_token", apiToken);
+        hfConfig.setEnabled(true);
 
-        @Override
-        public void load() throws Exception {
-            System.out.println("Loading MySmartModel...");
-            // Simulate loading time
-            Thread.sleep(100);
-            setLoaded(true);
-            System.out.println("MySmartModel loaded successfully!");
-        }
+        configManager.addModelConfig(hfConfig);
+        System.out.println("HuggingFace DialoGPT-midium 模型配置完成");
+    }
 
-        @Override
-        public void unload() throws Exception {
-            System.out.println("Unloading MySmartModel...");
-            setLoaded(false);
-            System.out.println("MySmartModel unloaded successfully!");
-        }
+    /**
+     * 配置本地部署模型（兼容OpenAI API格式）
+     */
+    private static void configureLocalModel(ConfigManager configManager) {
+        System.out.println("正在配置本地部署模型...");
 
-        @Override
-        public ModelResponse generate(String prompt, Map<String, Object> parameters) {
-            ModelResponse response = new ModelResponse(getModelId(), "chat");
+        ModelConfig localConfig = new ModelConfig("local-llama", "chat", "local");
 
-            long startTime = System.currentTimeMillis();
+        // 本地部署通常使用类似OpenAI的兼容接口
+        localConfig.addParameter("endpoint", "http://localhost:8000/v1");
+        localConfig.addParameter("model_name", "llama-2-7b-chat");
 
-            try {
-                // Simulate processing delay
-                int delayMs = 50 + (int)(Math.random() * 100); // 50-150ms
-                Thread.sleep(delayMs);
+        localConfig.addParameter("max_tokens", 1024);
+        localConfig.addParameter("temperature", 0.8);
 
-                // Generate "intelligent" response based on the prompt
-                String processedPrompt = prompt.toLowerCase().trim();
-                String responseText = generateIntelligentResponse(processedPrompt);
+        localConfig.addParameter("connect_timeout", 10);
+        localConfig.addParameter("read_timeout", 30);
+        localConfig.addParameter("max_retries", 2);
 
-                response.setOutput(responseText);
-                response.setProcessingTimeMs(System.currentTimeMillis() - startTime);
-                response.setSuccess(true);
+        // 本地模型通常不需要API Key，或者使用默认的
+        localConfig.addCredential("api_key", "local-key");
+        localConfig.setEnabled(true);
 
-                // Add some metadata
-                Map<String, Object> metadata = new HashMap<>();
-                metadata.put("confidence", 0.9 + Math.random() * 0.1); // 0.9-1.0
-                metadata.put("processing_delay_ms", delayMs);
-                response.setMetadata(metadata);
+        configManager.addModelConfig(localConfig);
+        System.out.println("本地Llama2-7B-chat模型配置完成");
+    }
 
-            } catch (InterruptedException e) {
-                response.setSuccess(false);
-                response.setErrorMessage("Processing interrupted");
-                Thread.currentThread().interrupt();
-            } catch (Exception e) {
-                response.setSuccess(false);
-                response.setErrorMessage("Generation failed: " + e.getMessage());
-            }
+    /**
+     * 运行OpenAI模型评估
+     */
+    private static void runOpenAIEvaluation(EvalScopeRunner runner) {
+        System.out.println("\n=== 运行 OpenAI GPT-3.5-Turbo 模型评估 ===");
 
-            return response;
-        }
+        // 使用命令行参数方式进行评估，这与modelscope/evalscope的风格相似
+        String[] cmdArgs = {
+            "--url", "https://api.openai.com/v1",
+            "--model", "gpt-3.5-turbo",
+            "--api-key", System.getenv("OPENAI_API_KEY") != null ? System.getenv("OPENAI_API_KEY") : "demo-key",
+            "--dataset", "general_qa",
+            "--concurrent", "5",
+            "--number", "20",
+            "--temperature", "0.7",
+            "--max-tokens", "1024"
+        };
 
-        @Override
-        public ModelResponse generate(String prompt) {
-            return generate(prompt, new HashMap<>());
-        }
+        try {
+            // 直接创建评估配置并运行
+            EvaluationReport report = runner.runEvaluation("openai_gpt35_evaluation");
 
-        private String generateIntelligentResponse(String prompt) {
-            // Search knowledge base
-            for (Map.Entry<String, String> entry : KNOWLEDGE_BASE.entrySet()) {
-                if (prompt.contains(entry.getKey())) {
-                    return entry.getValue();
-                }
-            }
-
-            // Generate "intelligent" fallback response
-            if (prompt.contains("what") || prompt.contains("why")) {
-                return "Based on my analysis, here is what I know related to your question: " + prompt.substring(0, Math.min(prompt.length(), 30)) + "...";
-            } else if (prompt.contains("how")) {
-                return "Let me explain the steps: First, " + prompt.substring(0, Math.min(prompt.length(), 20)) + "... Then, the process continues.";
-            } else if (prompt.contains("when")) {
-                return "That depends on various factors, but typically when " + prompt + " occurs.";
+            if (report.hasResults()) {
+                System.out.println("OpenAI GPT-3.5评估完成:");
+                System.out.println("- 模型数: " + report.getTotalModels());
+                System.out.println("- 成功率: " +
+                    report.getSummary().getOrDefault("overall_success_rate", "unknown"));
+                System.out.println("- 平均延迟: " +
+                    report.getSummary().getOrDefault("avg_latency_ms", "unknown") + "ms");
             } else {
-                return "I have thoughtfully considered: " + prompt + ". Here is my intelligent response based on careful analysis.";
+                System.out.println("OpenAI评估没有产生结果（可能因为未设置有效的API key）");
             }
+        } catch (Exception e) {
+            System.err.println("OpenAI模型评估失败: " + e.getMessage());
         }
     }
 
     /**
-     * Example of a custom evaluator implementation.
+     * 运行HuggingFace模型评估
      */
-    public static class CustomEvaluator implements Evaluator {
+    private static void runHuggingFaceEvaluation(EvalScopeRunner runner) {
+        System.out.println("\n=== 运行 HuggingFace DialoGPT-Medium 模型评估 ===");
 
-        @Override
-        public String getEvaluatorName() {
-            return "CustomSmartEvaluator";
-        }
+        try {
+            EvaluationReport report = runner.runEvaluation("hf_dialogpt_evaluation");
 
-        @Override
-        public String getEvaluationType() {
-            return "intelligence_test";
-        }
-
-        @Override
-        public boolean supportsModel(com.evalscope.model.Model model) {
-            // This evaluator supports any chat model
-            return true;
-        }
-
-        @Override
-        public EvaluationResult evaluate(com.evalscope.model.Model model, EvaluationData data) {
-            return evaluate(model, data, new HashMap<>());
-        }
-
-        @Override
-        public EvaluationResult evaluate(com.evalscope.model.Model model, EvaluationData data,
-                                       Map<String, Object> parameters) {
-
-            EvaluationResult result = new EvaluationResult(getEvaluatorName(), model.getModelId(), data.getTaskType());
-
-            System.out.println("Running custom evaluation for model: " + model.getModelId());
-
-            List<com.evalscope.evaluator.TestCase> testCases = data.getTestCases();
-            List<com.evalscope.evaluator.TestResult> testResults = new ArrayList<>();
-
-            for (com.evalscope.evaluator.TestCase testCase : testCases) {
-                com.evalscope.evaluator.TestResult testResult = evaluateSingleTest(model, testCase, parameters);
-                testResults.add(testResult);
-            }
-
-            result.setTestResults(testResults);
-
-            // Add custom metrics
-            Map<String, Object> metrics = new HashMap<>();
-            metrics.put("intelligence_score", calculateIntelligenceScore(testResults));
-            metrics.put("creativity_index", calculateCreativityIndex(testResults));
-            metrics.put("knowledge_depth", calculateKnowledgeDepth(testResults));
-            result.setMetrics(metrics);
-
-            return result;
-        }
-
-        private com.evalscope.evaluator.TestResult evaluateSingleTest(com.evalscope.model.Model model,
-                                                                    com.evalscope.evaluator.TestCase testCase,
-                                                                    Map<String, Object> parameters) {
-
-            com.evalscope.evaluator.TestResult testResult = new com.evalscope.evaluator.TestResult(
-                testCase.getId(), testCase.getInput(), testCase.getExpectedOutput()
-            );
-
-            try {
-                // Generate response from model
-                com.evalscope.model.ModelResponse response;
-                if (model instanceof com.evalscope.model.ChatModel) {
-                    response = ((com.evalscope.model.ChatModel) model).generate(testCase.getInput(), parameters);
-                } else {
-                    throw new IllegalArgumentException("Model must be a ChatModel for this evaluator");
-                }
-
-                if (response.isSuccess()) {
-                    String actualOutput = response.getOutput();
-                    testResult.setActualOutput(actualOutput);
-
-                    // Custom scoring logic
-                    double score = calculateCustomScore(testCase.getExpectedOutput(), actualOutput);
-                    testResult.setScore(score);
-                    testResult.setPassed(score >= 0.6); // Lower threshold for "intelligence"
-
-                    String feedback = generateCustomFeedback(testCase.getExpectedOutput(), actualOutput, score);
-                    testResult.setFeedback(feedback);
-
-                    // Add custom metrics
-                    Map<String, Object> metrics = new HashMap<>();
-                    metrics.put("response_quality", score > 0.8 ? "excellent" : score > 0.5 ? "good" : "needs_improvement");
-                    metrics.put("creativity_level", estimateCreativityLevel(actualOutput));
-                    testResult.setMetrics(metrics);
-
-                } else {
-                    testResult.setErrorMessage("Model generation failed: " + response.getErrorMessage());
-                    testResult.setScore(0.0);
-                    testResult.setPassed(false);
-                }
-
-            } catch (Exception e) {
-                testResult.setErrorMessage("Evaluation failed: " + e.getMessage());
-                testResult.setScore(0.0);
-                testResult.setPassed(false);
-            }
-
-            return testResult;
-        }
-
-        private double calculateCustomScore(String expected, String actual) {
-            // More sophisticated scoring based on intelligence, creativity, relevance
-            double exactMatchScore = expected.equalsIgnoreCase(actual.trim()) ? 1.0 : 0.0;
-            double lengthScore = Math.min(1.0, actual.length() / (double) expected.length());
-            double containsExpected = actual.toLowerCase().contains(expected.toLowerCase()) ? 0.8 : 0.0;
-
-            double baseScore = Math.max(exactMatchScore, Math.max(containsExpected, lengthScore * 0.5));
-
-            // Add creativity bonus
-            int wordCount = actual.split("\\s+").length;
-            double creativityBonus = Math.min(0.3, wordCount / 20.0); // More words = more creativity (up to limit)
-
-            return Math.min(1.0, baseScore + creativityBonus);
-        }
-
-        private String generateCustomFeedback(String expected, String actual, double score) {
-            if (score >= 0.8) {
-                return "Excellent intelligent response demonstrating strong AI capabilities";
-            } else if (score >= 0.6) {
-                return "Good response with reasonable intelligence and creativity";
+            if (report.hasResults()) {
+                System.out.println("HuggingFace DialoGPT评估完成:");
+                System.out.println("- 测试样本: " + report.getSummary().getOrDefault("total_samples", 0));
+                System.out.println("- 平均得分: " +
+                    report.getSummary().getOrDefault("avg_score", "N/A"));
             } else {
-                return "Response needs improvement in intelligence and understanding";
+                System.out.println("HuggingFace评估没有产生结果");
             }
+        } catch (Exception e) {
+            System.err.println("HuggingFace模型评估失败: " + e.getMessage());
         }
+    }
 
-        private String estimateCreativityLevel(String response) {
-            int uniqueWords = new HashSet<String>(Arrays.asList(response.toLowerCase().split("\\s+"))).size();
-            return uniqueWords > 10 ? "high" : uniqueWords > 5 ? "medium" : "low";
+    /**
+     * 运行本地模型评估
+     */
+    private static void runLocalEvaluation(EvalScopeRunner runner) {
+        System.out.println("\n=== 运行本地Llama2-7B-Chat模型评估 ===");
+
+        try {
+            EvaluationReport report = runner.runEvaluation("local_llama_evaluation");
+
+            if (report.hasResults()) {
+                System.out.println("本地Llama2模型评估完成");
+            } else {
+                System.out.println("本地模型评估没有产生结果（可能的本地服务未启动）");
+            }
+        } catch (Exception e) {
+            System.err.println("本地模型评估失败: " + e.getMessage());
         }
+    }
 
-        private double calculateIntelligenceScore(List<com.evalscope.evaluator.TestResult> testResults) {
-            return testResults.stream().mapToDouble(com.evalscope.evaluator.TestResult::getScore).average().orElse(0.0);
+    /**
+     * 创建并执行批量模型性能评估
+     */
+    private static void runBatchEvaluation(EvalScopeRunner runner) {
+        System.out.println("\n=== 运行批量模型性能评估 ===");
+
+        try {
+            EvaluationReport report = runner.runEvaluation("batch_comparison_eval");
+
+            if (report.hasResults()) {
+                System.out.println("批量对比评估完成:");
+                System.out.println("对比模型:");
+                System.out.println("- OpenAI GPT-3.5-Turbo");
+                System.out.println("- HuggingFace DialoGPT-Medium");
+                System.out.println("- 本地 Llama2-7B-Chat");
+                System.out.println();
+                System.out.println("评估维度:");
+                System.out.println("- 响应速度 (tokens/second)");
+                System.out.println("- 成功率 (%)");
+                System.out.println("- 文本质量得分");
+                System.out.println("- 内存使用情况");
+                System.out.println("- 并发处理能力");
+            }
+        } catch (Exception e) {
+            System.err.println("批量评估失败: " + e.getMessage());
         }
+    }
 
-        private double calculateCreativityIndex(List<com.evalscope.evaluator.TestResult> testResults) {
-            return testResults.stream()
-                .filter(result -> result.getMetrics() != null && result.getMetrics().containsKey("creativity_level"))
-                .mapToDouble(result -> {
-                    String level = (String) result.getMetrics().get("creativity_level");
-                    return "high".equals(level) ? 1.0 : "medium".equals(level) ? 0.5 : 0.0;
-                })
-                .average()
-                .orElse(0.0);
-        }
+    /**
+     * 演示使用具体的模型实例而不是配置来运行评估
+     * （更接近 https://github.com/modelscope/evalscope 的直接模型调用方式）
+     */
+    private static void directModelEvaluationDemo() {
+        System.out.println("\n=== 直接模型实例评估演示 ===");
 
-        private double calculateKnowledgeDepth(List<com.evalscope.evaluator.TestResult> testResults) {
-            return (double) testResults.stream()
-                .filter(com.evalscope.evaluator.TestResult::isPassed)
-                .count() / testResults.size();
+        try {
+            // 直接创建OpenAI模型实例
+            OpenAICompatibleModel openAIModel = new OpenAICompatibleModel("direct-gpt", "chat", "openai");
+            openAIModel.setApiEndpoint("https://api.openai.com/v1");
+            openAIModel.setModelName("gpt-3.5-turbo");
+            openAIModel.setApiKey(System.getenv("OPENAI_API_KEY"));
+            openAIModel.setConnectionTimeout(30);
+            openAIModel.setReadTimeout(60);
+
+            System.out.println("直接创建的OpenAI模型: " + openAIModel.getModelId());
+
+            // 直接创建HuggingFace模型实例
+            HuggingFaceModel hfModel = new HuggingFaceModel("direct-hf-model", "chat");
+            hfModel.setModelName("microsoft/DialoGPT-medium");
+            hfModel.setApiToken(System.getenv("HF_API_TOKEN"));
+            hfModel.setReadTimeout(120);
+
+            System.out.println("直接创建的HF模型: " + hfModel.getModelName());
+
+        } catch (Exception e) {
+            System.err.println("直接模型评估演示失败: " + e.getMessage());
         }
     }
 }
