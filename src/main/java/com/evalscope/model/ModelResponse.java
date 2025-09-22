@@ -49,6 +49,11 @@ public class ModelResponse {
     private String errorMessage;
 
     /**
+     * 是否启用了流式传输
+     */
+    private boolean streaming = false;
+
+    /**
      * 构造新的模型响应实例
      * @param modelId 模型标识符
      * @param taskType 任务类型
@@ -102,6 +107,14 @@ public class ModelResponse {
 
     public void setSuccess(boolean success) {
         this.success = success;
+    }
+
+        public boolean isStreaming() {
+        return streaming;
+    }
+
+    public void setStreaming(boolean streaming) {
+        this.streaming = streaming;
     }
 
     public String getErrorMessage() {

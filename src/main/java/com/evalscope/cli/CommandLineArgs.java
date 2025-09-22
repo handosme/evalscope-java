@@ -51,6 +51,10 @@ public class CommandLineArgs {
     private String datasetPath;
     private Integer datasetLimit;
     private Boolean datasetShuffle = false;
+    // Line-by-line dataset specific parameters
+    private Integer maxExamples;
+    private Integer skipLines = 0;
+    private String linePrefix;
 
     // Evaluation parameters
     private String evaluationType = "standard";
@@ -165,6 +169,15 @@ public class CommandLineArgs {
 
     public Boolean getDatasetShuffle() { return datasetShuffle; }
     public void setDatasetShuffle(Boolean datasetShuffle) { this.datasetShuffle = datasetShuffle; }
+
+    public Integer getMaxExamples() { return maxExamples; }
+    public void setMaxExamples(Integer maxExamples) { this.maxExamples = maxExamples; }
+
+    public Integer getSkipLines() { return skipLines; }
+    public void setSkipLines(Integer skipLines) { this.skipLines = skipLines; }
+
+    public String getLinePrefix() { return linePrefix; }
+    public void setLinePrefix(String linePrefix) { this.linePrefix = linePrefix; }
 
     public String getEvaluationType() { return evaluationType; }
     public void setEvaluationType(String evaluationType) { this.evaluationType = evaluationType; }

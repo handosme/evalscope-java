@@ -3,11 +3,16 @@ package com.evalscope.benchmark;
 import com.evalscope.model.ChatModel;
 import com.evalscope.model.Model;
 import com.evalscope.model.ModelResponse;
+import com.evalscope.evaluator.TestCase;
+import com.evalscope.config.DatasetConfig;
+import com.evalscope.data.DataLoaderFactory;
 
 import java.util.Map;
 import java.util.HashMap;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Random;
+import java.io.IOException;
 
 public class PerformanceBenchmark implements Benchmark {
     private static final String BENCHMARK_NAME = "PerformanceBenchmark";
@@ -53,12 +58,24 @@ public class PerformanceBenchmark implements Benchmark {
 
             int warmupIterations = getParameter(parameters, "warmup_iterations", DEFAULT_WARMUP_ITERATIONS);
             int testIterations = getParameter(parameters, "test_iterations", DEFAULT_TEST_ITERATIONS);
-            String testPrompt = getParameter(parameters, "test_prompt", DEFAULT_TEST_PROMPT);
 
-            // Warmup phase
+            // 加载数据集或prompt列表
+            List<String> prompts = loadPromptsForBenchmark(parameters);
+
+            if (prompts.isEmpty()) {
+                prompts.add(DEFAULT_TEST_PROMPT);
+            }
+
+            System.out.println("Using " + prompts.size() + " prompts for performance testing");
+            System.out.println("Warmup iterations: " + warmupIterations);
+            System.out.println("Test iterations: " + testIterations);
+
+            // Warmup phase - 随机选择prompt
             System.out.println("Running warmup phase (" + warmupIterations + " iterations)...");
+            Random random = new Random();
             for (int i = 0; i < warmupIterations; i++) {
-                chatModel.generate(testPrompt);
+                String prompt = prompts.get(random.nextInt(prompts.size()));
+                chatModel.generate(prompt);
             }
 
             // Actual benchmarking
@@ -69,9 +86,11 @@ public class PerformanceBenchmark implements Benchmark {
             int failedRequests = 0;
 
             for (int i = 0; i < testIterations; i++) {
+                String prompt = prompts.get(random.nextInt(prompts.size()));
+
                 try {
                     long startTime = System.nanoTime();
-                    ModelResponse response = chatModel.generate(testPrompt);
+                    ModelResponse response = chatModel.generate(prompt);
                     long endTime = System.nanoTime();
 
                     if (response.isSuccess() && response.getOutput() != null) {
@@ -181,6 +200,63 @@ public class PerformanceBenchmark implements Benchmark {
     private int estimateTokenCount(String text) {
         // Simple token estimation: roughly 4 characters per token on average
         return text != null ? text.length() / 4 : 0;
+    }
+
+    private List<String> loadPromptsForBenchmark(Map<String, Object> parameters) throws IOException {
+        List<String> prompts = new ArrayList<>();
+
+        if (parameters == null) {
+            return prompts;
+        }
+
+        // 检查是否是通过dataset参数指定的line_by_line模式
+        String datasetType = getParameter(parameters, "dataset", null);
+        if (!"line_by_line".equalsIgnoreCase(datasetType)) {
+            // 如果不是line_by_line模式，检查是否有test_prompt参数
+            String testPrompt = getParameter(parameters, "test_prompt", null);
+            if (testPrompt != null) {
+                prompts.add(testPrompt);
+            }
+            return prompts;
+        }
+
+        // line_by_line模式：加载datasetPath指定的文件
+        String datasetPath = getParameter(parameters, "datasetPath", null);
+        if (datasetPath == null || datasetPath.isEmpty()) {
+            System.err.println("line_by_line dataset specified but datasetPath is missing, using default prompt");
+            return prompts;
+        }
+
+        try {
+            // 创建临时的数据集配置用于加载
+            DatasetConfig datasetConfig = new DatasetConfig("performance_dataset", "txt", datasetPath);
+
+            // 从parameters拷贝相关参数到数据集配置中
+            Map<String, Object> datasetParams = new HashMap<>();
+            datasetParams.put("dataset", "line_by_line");
+            datasetParams.put("shuffle", getParameter(parameters, "dataset_shuffle", false));
+            datasetParams.put("limit", getParameter(parameters, "max_examples", Integer.MAX_VALUE));
+            datasetParams.put("skip_lines", getParameter(parameters, "skip_lines", 0));
+            datasetParams.put("line_prefix", getParameter(parameters, "line_prefix", ""));
+            datasetConfig.setParameters(datasetParams);
+
+            // 使用DataLoader加载数据集
+            List<TestCase> testCases = DataLoaderFactory.loadDataset(datasetConfig);
+
+            // 提取每个testcase的输入作为prompt
+            for (TestCase testCase : testCases) {
+                prompts.add(testCase.getInput());
+            }
+
+            System.out.println("Loaded " + prompts.size() + " prompts from line_by_line dataset: " + datasetPath);
+
+        } catch (Exception e) {
+            System.err.println("Failed to load line_by_line dataset from " + datasetPath + ": " + e.getMessage());
+            System.err.println("Falling back to default prompt");
+            // fallback已经在方法开始时处理
+        }
+
+        return prompts;
     }
 
     @SuppressWarnings("unchecked")

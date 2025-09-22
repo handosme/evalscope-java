@@ -4,9 +4,12 @@ import com.evalscope.config.ConfigManager;
 import com.evalscope.config.IConfigManager;
 import com.evalscope.config.EvaluationConfig;
 import com.evalscope.config.ModelConfig;
+import com.evalscope.config.DatasetConfig;
+import com.evalscope.data.DataLoaderFactory;
 import com.evalscope.evaluator.Evaluator;
 import com.evalscope.evaluator.EvaluationResult;
 import com.evalscope.evaluator.EvaluationData;
+import com.evalscope.evaluator.TestCase;
 import com.evalscope.model.Model;
 import com.evalscope.model.ModelFactory;
 import com.evalscope.benchmark.Benchmark;
@@ -15,7 +18,9 @@ import com.evalscope.benchmark.BenchmarkResult;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
 import java.util.concurrent.*;
+import java.io.IOException;
 
 public class EvaluationRunner {
     private final com.evalscope.config.IConfigManager configManager;
@@ -113,8 +118,8 @@ public class EvaluationRunner {
 
                 System.out.println("Running evaluator: " + evaluator.getEvaluatorName());
 
-                // Create evaluation data (in a real implementation, this would load from dataset)
-                EvaluationData data = createSampleEvaluationData();
+                // Create evaluation data - now loads from dataset if available
+                EvaluationData data = createEvaluationData(config);
 
                 EvaluationResult result = evaluator.evaluate(model, data, config.getParameters());
                 report.addEvaluationResult(result);
@@ -165,18 +170,59 @@ public class EvaluationRunner {
         }
     }
 
-    private EvaluationData createSampleEvaluationData() {
-        // Create sample test cases for demonstration
-        // In a real implementation, this would load from a dataset file
-        List<com.evalscope.evaluator.TestCase> testCases = Arrays.asList(
-            new com.evalscope.evaluator.TestCase("test1", "What is 2+2?", "4"),
-            new com.evalscope.evaluator.TestCase("test2", "Capital of France?", "Paris"),
-            new com.evalscope.evaluator.TestCase("test3", "Translate 'hello' to French", "bonjour"),
-            new com.evalscope.evaluator.TestCase("test4", "What is the largest planet?", "Jupiter"),
-            new com.evalscope.evaluator.TestCase("test5", "Who wrote Romeo and Juliet?", "Shakespeare")
-        );
+    private EvaluationData createEvaluationData(EvaluationConfig config) throws IOException {
+        String datasetPath = config.getDatasetPath();
+        List<TestCase> testCases;
 
-        return new EvaluationData("conversation", testCases);
+        if (datasetPath != null && !datasetPath.isEmpty()) {
+            System.out.println("Loading dataset from: " + datasetPath);
+
+            // 解析datasetPath，可能是直接的文件路径或是dataset配置名称
+            DatasetConfig datasetConfig = null;
+            // 尝试从YamlConfigManager获取dataset配置
+            if (configManager instanceof com.evalscope.config.YamlConfigManager) {
+                com.evalscope.config.YamlConfigManager yamlManager = (com.evalscope.config.YamlConfigManager) configManager;
+                if (yamlManager.getDatasetConfig(datasetPath) != null) {
+                    datasetConfig = yamlManager.getDatasetConfig(datasetPath);
+                }
+            }
+
+            if (datasetConfig == null) {
+                // datasetPath指向真实的文件，创建临时的数据集配置
+                datasetConfig = new DatasetConfig("custom", "txt", datasetPath);
+
+                // 检查参数中是否有dataset类型指定（如：line_by_line）
+                String datasetType = (String) config.getParameters().get("dataset");
+                if (datasetType != null) {
+                    datasetConfig.getParameters().put("dataset", datasetType);
+                }
+            }
+
+            try {
+                // 加载数据集
+                testCases = DataLoaderFactory.loadDataset(datasetConfig);
+                System.out.println("Loaded " + testCases.size() + " test cases from dataset");
+            } catch (Exception e) {
+                System.err.println("Failed to load dataset, falling back to sample data: " + e.getMessage());
+                testCases = createSampleTestCases();
+            }
+        } else {
+            System.out.println("No dataset specified, using sample test data");
+            testCases = createSampleTestCases();
+        }
+
+        return new EvaluationData("loaded_dataset", testCases);
+    }
+
+    private List<TestCase> createSampleTestCases() {
+        // Fallback to sample test cases
+        return Arrays.asList(
+            new TestCase("test1", "What is 2+2?", "4"),
+            new TestCase("test2", "Capital of France?", "Paris"),
+            new TestCase("test3", "Translate 'hello' to French", "bonjour"),
+            new TestCase("test4", "What is the largest planet?", "Jupiter"),
+            new TestCase("test5", "Who wrote Romeo and Juliet?", "Shakespeare")
+        );
     }
 
     public void shutdown() {

@@ -23,11 +23,13 @@ public class ConfigManager implements IConfigManager {
     private ObjectMapper objectMapper;
     private Map<String, ModelConfig> modelConfigs;
     private Map<String, EvaluationConfig> evaluationConfigs;
+    private Map<String, DatasetConfig> datasetConfigs;
 
     public ConfigManager() {
         this.objectMapper = new ObjectMapper();
         this.modelConfigs = new HashMap<>();
         this.evaluationConfigs = new HashMap<>();
+        this.datasetConfigs = new HashMap<>();
         loadDefaultConfig();
     }
 
@@ -212,6 +214,19 @@ public class ConfigManager implements IConfigManager {
         evaluationConfigs.put(config.getEvaluationName(), config);
     }
 
+    // Basic dataset config support (simplified, not full datasets parsing)
+    public DatasetConfig getDatasetConfig(String datasetId) {
+        return datasetConfigs.get(datasetId);
+    }
+
+    public Map<String, DatasetConfig> getAllDatasetConfigs() {
+        return new HashMap<>(datasetConfigs);
+    }
+
+    public void addDatasetConfig(DatasetConfig config) {
+        datasetConfigs.put(config.getDatasetId(), config);
+    }
+
     public Config getRawConfig() {
         return typesafeConfig;
     }
@@ -228,6 +243,7 @@ public class ConfigManager implements IConfigManager {
         typesafeConfig = ConfigFactory.load().withFallback(typesafeConfig);
         modelConfigs.clear();
         evaluationConfigs.clear();
+        datasetConfigs.clear();
         parseConfigs();
     }
 }

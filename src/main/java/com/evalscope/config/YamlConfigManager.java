@@ -28,11 +28,13 @@ public class YamlConfigManager implements IConfigManager {
     private ObjectMapper objectMapper;
     private Map<String, ModelConfig> modelConfigs;
     private Map<String, EvaluationConfig> evaluationConfigs;
+    private Map<String, DatasetConfig> datasetConfigs;
 
     public YamlConfigManager() {
         this.objectMapper = new ObjectMapper();
         this.modelConfigs = new HashMap<>();
         this.evaluationConfigs = new HashMap<>();
+        this.datasetConfigs = new HashMap<>();
         loadDefaultConfig();
     }
 
@@ -99,6 +101,23 @@ public class YamlConfigManager implements IConfigManager {
                     }
                 }
             }
+
+            // Parse datasets
+            if (evalscopeData.containsKey("datasets")) {
+                Map<String, Object> datasetsData = (Map<String, Object>) evalscopeData.get("datasets");
+                for (Map.Entry<String, Object> entry : datasetsData.entrySet()) {
+                    String datasetId = entry.getKey();
+                    Map<String, Object> datasetData = (Map<String, Object>) entry.getValue();
+
+                    try {
+                        DatasetConfig config = parseYamlDatasetData(datasetId, datasetData);
+                        datasetConfigs.put(datasetId, config);
+                        System.out.println("Loaded YAML dataset configuration: " + datasetId);
+                    } catch (Exception e) {
+                        System.err.println("Failed to parse YAML dataset config for " + datasetId + ": " + e.getMessage());
+                    }
+                }
+            }
         } else {
             throw new IOException("Invalid YAML structure: missing 'evalscope' section");
         }
@@ -135,9 +154,13 @@ public class YamlConfigManager implements IConfigManager {
             config.setModelIds(modelIds);
         }
 
-        if (evalData.containsKey("evaluators")) {
-            List<String> evaluatorTypes = (List<String>) evalData.get("evaluators");
+        if (evalData.containsKey("evaluatorTypes")) {
+            List<String> evaluatorTypes = (List<String>) evalData.get("evaluatorTypes");
             config.setEvaluatorTypes(evaluatorTypes);
+        }
+
+        if (evalData.containsKey("datasetPath")) {
+            config.setDatasetPath((String) evalData.get("datasetPath"));
         }
 
         if (evalData.containsKey("maxConcurrency")) {
@@ -154,6 +177,22 @@ public class YamlConfigManager implements IConfigManager {
 
         if (evalData.containsKey("parameters")) {
             Map<String, Object> parameters = (Map<String, Object>) evalData.get("parameters");
+            config.setParameters(parameters);
+        }
+
+        return config;
+    }
+
+    private DatasetConfig parseYamlDatasetData(String datasetId, Map<String, Object> datasetData) {
+        String format = (String) datasetData.getOrDefault("format", "json");
+        String path = (String) datasetData.get("path");
+        String datasetType = (String) datasetData.getOrDefault("dataset_type", "conversation");
+
+        DatasetConfig config = new DatasetConfig(datasetId, format, path);
+        config.setDatasetType(datasetType);
+
+        if (datasetData.containsKey("parameters")) {
+            Map<String, Object> parameters = (Map<String, Object>) datasetData.get("parameters");
             config.setParameters(parameters);
         }
 
@@ -346,6 +385,18 @@ public class YamlConfigManager implements IConfigManager {
         evaluationConfigs.put(config.getEvaluationName(), config);
     }
 
+    public DatasetConfig getDatasetConfig(String datasetId) {
+        return datasetConfigs.get(datasetId);
+    }
+
+    public Map<String, DatasetConfig> getAllDatasetConfigs() {
+        return new HashMap<>(datasetConfigs);
+    }
+
+    public void addDatasetConfig(DatasetConfig config) {
+        datasetConfigs.put(config.getDatasetId(), config);
+    }
+
     public Config getRawConfig() {
         return typesafeConfig;
     }
@@ -362,6 +413,7 @@ public class YamlConfigManager implements IConfigManager {
         typesafeConfig = ConfigFactory.load().withFallback(typesafeConfig);
         modelConfigs.clear();
         evaluationConfigs.clear();
+        datasetConfigs.clear();
         parseConfigs();
     }
 }

@@ -167,11 +167,12 @@ public class EvalScopeRunner {
         if (cmdArgs.getModel() != null) {
             evalConfig.addParameter("model", cmdArgs.getModel());
         }
+        // IMPORTANT: Fix dataset parameter mapping for line_by_line support
         if (cmdArgs.getDataset() != null) {
-            evalConfig.setDatasetPath(cmdArgs.getDataset());
+            evalConfig.addParameter("dataset", cmdArgs.getDataset());  // Pass dataset type as parameter
         }
         if (cmdArgs.getDatasetPath() != null) {
-            evalConfig.setDatasetPath(cmdArgs.getDatasetPath());
+            evalConfig.setDatasetPath(cmdArgs.getDatasetPath());  // Set actual file path
         }
         if (cmdArgs.getOutputPath() != null) {
             evalConfig.setOutputPath(cmdArgs.getOutputPath());
@@ -241,6 +242,16 @@ public class EvalScopeRunner {
         }
         if (cmdArgs.getDatasetShuffle() != null && cmdArgs.getDatasetShuffle()) {
             evalConfig.addParameter("dataset_shuffle", true);
+        }
+        // Add line-by-line dataset specific parameters
+        if (cmdArgs.getMaxExamples() != null) {
+            evalConfig.addParameter("max_examples", cmdArgs.getMaxExamples());
+        }
+        if (cmdArgs.getSkipLines() != null) {
+            evalConfig.addParameter("skip_lines", cmdArgs.getSkipLines());
+        }
+        if (cmdArgs.getLinePrefix() != null) {
+            evalConfig.addParameter("line_prefix", cmdArgs.getLinePrefix());
         }
 
         // Apply evaluation parameters

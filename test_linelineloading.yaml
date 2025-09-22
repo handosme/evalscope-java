@@ -1,0 +1,36 @@
+evalscope:
+  evaluations:
+    test_line_by_line:
+      evaluationName: "test_line_by_line"
+      modelIds: ["mock-model"]
+      evaluatorTypes: ["chat"]
+      datasetPath: "test_prompts.txt"
+      maxConcurrency: 1
+      saveResults: true
+      outputPath: "results/test_line_by_line/"
+      parameters:
+        dataset: "line_by_line"
+        max_examples: 20
+        concurrent: 1
+        warmup_iterations: 2
+        test_iterations: 10
+        skip_lines: 0
+        shuffle: false
+
+  models:
+    mock-model:
+      modelType: "chat"
+      provider: "mock"
+      enabled: true
+      parameters:
+        response_delay_ms: 50
+
+  datasets:
+    test_prompts:
+      format: "txt"
+      path: "test_prompts.txt"
+      parameters:
+        shuffle: false
+        limit: 20
+        skip_lines: 0
+        line_prefix: ""

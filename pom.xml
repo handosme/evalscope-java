@@ -69,6 +69,20 @@
             <version>${jackson.version}</version>
         </dependency>
 
+        <!-- Netty for HTTP client and SSE streaming support -->
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-all</artifactId>
+            <version>4.1.104.Final</version>
+        </dependency>
+
+        <!-- Reactor Netty for HTTP/HTTPS support -->
+        <dependency>
+            <groupId>io.projectreactor.netty</groupId>
+            <artifactId>reactor-netty</artifactId>
+            <version>1.0.39</version>
+        </dependency>
+
         <!-- Testing -->
         <dependency>
             <groupId>junit</groupId>

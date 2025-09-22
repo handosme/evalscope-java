@@ -167,6 +167,16 @@ public class ArgumentParser {
         if (argMap.containsKey("dataset-shuffle")) {
             cmdArgs.setDatasetShuffle(parseBoolean(argMap.get("dataset-shuffle"), false));
         }
+        // Line-by-line dataset specific parameters
+        if (argMap.containsKey("max-examples")) {
+            cmdArgs.setMaxExamples(parseInt(argMap.get("max-examples"), 100));
+        }
+        if (argMap.containsKey("skip-lines")) {
+            cmdArgs.setSkipLines(parseInt(argMap.get("skip-lines"), 0));
+        }
+        if (argMap.containsKey("line-prefix")) {
+            cmdArgs.setLinePrefix(argMap.get("line-prefix"));
+        }
     }
 
     private static void parseEvaluationParameters(Map<String, String> argMap, CommandLineArgs cmdArgs) {
