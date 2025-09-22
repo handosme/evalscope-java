@@ -1,0 +1,165 @@
+# EvalScope 配置文件 - 标准基准测试示例
+# 适用于评估模型在标准条件下的性能表现
+
+evaluations:
+  standard_benchmark:
+    evaluationName: "standard_benchmark"
+    evaluatorTypes: ["chat", "embedding"]
+    maxConcurrency: 10
+    datasetPath: "datasets/MMLU/dev.json"
+    saveResults: true
+    resultFormat: "json"
+    outputPath: "results/standard/"
+    parameters:
+      max_examples: 1000
+      number: 10
+      rounds: 1
+      concurrent: 10
+      max_workers: 20
+      connect_timeout: 30
+      read_timeout: 60
+      max_retries: 3
+      retry_delay: 1000
+
+      # 模型请求参数
+      max_tokens: 1024
+      temperature: 0.3
+      top_p: 0.95
+      frequency_penalty: 0.0
+      presence_penalty: 0.0
+
+      # 评估指标
+      metrics: "latency,accuracy,bleu,rouge"
+      include_latency: true
+      include_accuracy: true
+
+      # 测试模式
+      debug: false
+      verbose: false
+
+  concurrent_benchmark:
+    evaluationName: "concurrent_benchmark"
+    evaluatorTypes: ["chat"]
+    maxConcurrency: 50
+    datasetPath: "datasets/MMLU/test.json"
+    saveResults: true
+    resultFormat: "csv"
+    outputPath: "results/concurrent/"
+    parameters:
+      max_examples: 500
+      number: 20
+      rounds: 2
+      concurrent: 50
+      max_workers: 75
+      connect_timeout: 60
+      read_timeout: 120
+      max_retries: 5
+      retry_delay: 2000
+
+      # 模型请求参数
+      max_tokens: 2048
+      temperature: 0.7
+      top_p: 0.9
+      frequency_penalty: 0.1
+      presence_penalty: 0.1
+
+      # 评估指标
+      metrics: "latency,throughput,accuracy,consistency"
+      include_latency: true
+      include_accuracy: true
+
+      # 速率限制
+      requests_per_second: 5
+      requests_per_minute: 300
+
+datasets:
+  mmlu_dev:
+    format: "MMLU"
+    path: "datasets/MMLU/dev.json"
+    parameters:
+      shuffle: false
+      limit: 1000
+      validate: true
+
+  mmlu_test:
+    format: "MMLU"
+    path: "datasets/MMLU/test.json"
+    parameters:
+      shuffle: true
+      limit: 500
+      validate: true
+
+models:
+  gpt35_turbo_standard:
+    modelId: "gpt-3.5-turbo"
+    modelType: "chat"
+    provider: "openai"
+    enabled: true
+    parameters:
+      endpoint: "https://api.openai.com/v1"
+      max_tokens: 1024
+      temperature: 0.3
+      top_p: 0.95
+      frequency_penalty: 0.0
+      presence_penalty: 0.0
+      stream: false
+    credentials:
+      api_key: "${OPENAI_API_KEY}"
+
+  claude_haiku:
+    modelId: "claude-3-haiku"
+    modelType: "chat"
+    provider: "anthropic"
+    enabled: true
+    parameters:
+      endpoint: "https://api.anthropic.com/v1"
+      max_tokens: 4096
+      temperature: 0.5
+      top_p: 0.95
+      frequency_penalty: 0.0
+      presence_penalty: 0.0
+      stream: false
+    credentials:
+      api_key: "${ANTHROPIC_API_KEY}"
+
+  gemini_pro:
+    modelId: "gemini-pro"
+    modelType: "chat"
+    provider: "google"
+    enabled: true
+    parameters:
+      endpoint: "https://generativelanguage.googleapis.com"
+      max_tokens: 2048
+      temperature: 0.4
+      top_p: 0.9
+      frequency_penalty: 0.0
+      presence_penalty: 0.0
+      stream: false
+    credentials:
+      api_key: "${GOOGLE_API_KEY}"
+
+# 系统配置
+system:
+  log_level: "INFO"
+  output_prettify: true
+  performance_tracking: true
+
+  # 结果存储配置
+  result_storage:
+    type: "local"
+    path: "results/standard/"
+    format: "json"
+
+  # 指标收集配置
+  metrics:
+    collection_interval: 5
+    retention_days: 30
+    export_format: "json"
+
+  # 连接池配置
+  connection_pool:
+    max_connections: 100
+    connection_timeout: 30
+    read_timeout: 60
+    retry_attempts: 3
+    backoff_multiplier: 2.0

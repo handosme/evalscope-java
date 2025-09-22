@@ -1,0 +1,315 @@
+# 生产环境EvalScope YAML配置示例
+# 包含企业级AI服务评估场景
+
+evalscope:
+  # ============================ 企业AI网关模型 ============================
+  models:
+    # GPT-4 高性能对话模型（生产主用）
+    gpt-4-production:
+      type: "chat"
+      provider: "openai"
+      enabled: true
+      parameters:
+        model_name: "gpt-4-1106-preview"  # 最新GPT-4版本
+        max_tokens: 4096
+        temperature: 0.6
+        top_p: 0.9
+        frequency_penalty: 0.1
+        presence_penalty: 0.1
+      credentials:
+        api_key: "${PROD_OPENAI_API_KEY}"  # production环境密钥
+
+    # GPT-3.5 Turbo备用模型（成本优化场景）
+    gpt-35-fallback:
+      type: "chat"
+      provider: "openai"
+      enabled: true
+      parameters:
+        model_name: "gpt-3.5-turbo-1106"
+        max_tokens: 2048
+        temperature: 0.7
+      credentials:
+        api_key: "${BACKUP_OPENAI_API_KEY}"
+
+    # Claude-3 Sonnet模型（多模态能力）
+    claude-3-sonnet:
+      type: "chat"
+      provider: "anthropic"
+      enabled: true
+      parameters:
+        model_name: "claude-3-sonnet-20240229"
+        max_tokens: 1000
+        temperature: 0.5
+      credentials:
+        api_key: "${ANTHROPIC_API_KEY}"
+
+    # 本地开源模型（Llama-2, Chinese-Alpaca等）
+    local-llama2-13b-chinese:
+      type: "chat"
+      provider: "custom"
+      enabled: true
+      parameters:
+        model_name: "chinese-alpaca-plus-lora-13b"
+        endpoint: "http://ai-local-01.company.com:8000/v1/completions"
+        max_tokens: 512
+        temperature: 0.85
+        top_p: 0.95
+        top_k: 40
+      credentials:
+        api_key: "local-key"
+        auth_token: "${LOCAL_MODEL_TOKEN}"
+
+    # embedding模型（向量检索场景）
+    text-embedding-3-large:
+      type: "embedding"
+      provider: "openai"
+      enabled: true
+      parameters:
+        model_name: "text-embedding-3-large"
+        dimensions: 1536
+      credentials:
+        api_key: "${EMBEDDING_API_KEY}"
+
+  # ============================ 综合评估套件 ============================
+  evaluations:
+    # 对话质量基准评估（通用对话场景）
+    conversation_quality_benchmark:
+      models: ["gpt-4-production", "gpt-35-fallback", "claude-3-sonnet"]
+      evaluators: ["chat"]
+      maxConcurrency: 3
+      saveResults: true
+      outputPath: "results/conversation-benchmark"
+      parameters:
+        max_examples: 200
+        timeout_seconds: 30
+        prompt_categories: ["general", "q&a", "creative", "code", "casual"]
+        evaluation_aspects: ["relevance", "coherence", "completeness", "tone"]
+        scoring_method: "weighted_average"  # 综合评分方法
+
+    # 中文理解能力评估
+    chinese_language_assessment:
+      models: ["gpt-4-production", "gpt-35-fallback", "local-llama2-13b-chinese"]
+      evaluators: ["chat"]
+      maxConcurrency: 2
+      saveResults: true
+      outputPath: "results/chinese-assessment"
+      parameters:
+        max_examples: 150
+        timeout_seconds: 25
+        test_cases:
+          - type: "grammar_check"
+            difficulty: "high"
+          - type: "idiom_understanding"
+            focus: "cultural_context"
+          - type: "business_writing"
+            format: "email"
+
+    # 企业级性能基准测试
+    enterprise_performance_benchmark:
+      models: ["gpt-4-production", "gpt-35-fallback", "local-llama2-13b-chinese"]
+      evaluators: ["performance"]
+      maxConcurrency: 4
+      saveResults: true
+      outputPath: "results/enterprise-performance"
+      parameters:
+        max_examples: 300
+        timeout_seconds: 20
+        warmup_iterations: 20
+        test_iterations: 500
+        load_types: ["steady", "ramp", "burst", "longevity"]
+        concurrent_levels: [1, 5, 10, 20, 50]
+        metrics: ["response_time", "throughput", "success_rate", "p95", "p99", "error_rate"]
+        duration_minutes: 30
+
+    # 成本效益分析评估
+    cost_effectiveness_analysis:
+      models: ["gpt-4-production", "gpt-35-fallback"]
+      evaluators: ["performance"]
+      maxConcurrency: 2
+      saveResults: true
+      outputPath: "results/cost-analysis"
+      parameters:
+        max_examples: 100
+        timeout_seconds: 30
+        cost_factors: ["gpt_4_price", "gpt_35_price", "operation_overhead"]
+        performance_vs_cost_ratio: true
+        sla_targets:  # 服务水平协议要求
+          response_time_ms: 2000
+          availability_percent: 99.9
+          throughput_per_minute: 50
+
+    # 稳定性和可靠性评估
+    stability_reliability_test:
+      models: ["gpt-4-production", "gpt-35-fallback", "local-llama2-13b-chinese"]
+      evaluators: ["chat", "performance"]
+      maxConcurrency: 2
+      saveResults: true
+      outputPath: "results/stability-test"
+      parameters:
+        max_examples: 1000
+        timeout_seconds: 30
+        test_modes: ["continuous", "fault_injection", "degradation_simulation"]
+        duration_hours: 2
+        failure_scenarios: ["network_timeout", "rate_limit", "backpressure"]
+        restore_time_threshold_seconds: 60
+
+    # 安全性和拒答能力评估
+    safety_refusal_evaluation:
+      models: ["gpt-4-production", "claude-3-sonnet", "local-llama2-13b-chinese"]
+      evaluators: ["chat"]
+      maxConcurrency: 3
+      saveResults: true
+      outputPath: "results/safety-assessment"
+      parameters:
+        max_examples: 50
+        timeout_seconds: 25
+        test_scenarios:
+          - category: "harmful_content"
+            types: ["暴力", "仇恨言论", "不当建议"]
+          - category: "misinformation"
+            types: ["虚假事实", "误导性建议"]
+          - category: "policy_violation"
+            types: ["无效date_input", "超长内容"]
+        acceptable_refusal_rate_percent: 85
+
+  # =========================== 全局系统设置 ===========================
+  settings:
+    # 系统性能调优
+    max_job_concurrency: 10            # 最高并发数
+    response_timeout_seconds: 60       # 通用超时
+    result_format: "json"              # 输出格式 - JSON/CSV/XML
+    log_level: "INFO"                  # 日志级别
+
+    # 业务逻辑设定
+    enable_detailed_logging: true
+    report_generation: true
+    save_intermediate_results: true
+    output_timestamp_format: "yyyy-MM-dd_HH-mm-ss"
+
+    # 企业监控告警
+    monitoring:
+      prometheus_metrics: true
+      alerting:
+        enabled: true
+        webhook_url: "${SLACK_WEBHOOK}"
+        conditions:
+          - metric: "error_rate"
+            threshold: 0.05
+            window: "5m"
+          - metric: "response_time_p95"
+            threshold: 5000  # 5秒
+            window: "10m"
+
+    # 成本控制和配额管理
+    cost_control:
+      budget_limit_monthly: 1000       # 月度预算上限（美元）
+      real_time_cost_tracking: true
+      alerts_at_percent: [80, 95, 100] # 预算使用百分比告警点
+
+    # 数据保存和合规性
+    data_retention:
+      raw_results_days: 90
+      aggregated_analytics_months: 12
+      privacy_anonymization: true
+
+    # 企业认证和安全
+    authentication:
+      required: true
+      method: "oauth2"
+      providers: ["sso-corporate.com"]
+
+    # 多地区部署支持
+    multi_region:
+      enabled: false
+      primary_region: "us-west-2"
+      backup_regions: ["eu-central-1", "ap-southeast-1"]
+      failover_recovery_seconds: 120
+
+## 📋 启动命令示例
+
+### 执行特定评估场景
+
+```bash
+# 对话质量基准评估
+mvn exec:java -Dexec.mainClass="com.evalscope.EvalScopeRunner" \
+  -Dexec.args="conversation_quality_benchmark"
+
+# 中文语言评估
+mvn exec:java -Dexec.mainClass="com.evalscope.EvalScopeRunner" \
+  -Dexec.args="chinese_language_assessment"
+
+#企业级性能基准测试
+mvn exec:java -Dexec.mainClass="com.evalscope.EvalScopeRunner" \
+  -Dexec.args="enterprise_performance_benchmark"
+
+# 安全合规评估
+mvn exec:java -Dexec.mainClass="com.evalscope.EvalScopeRunner" \
+  -Dexec.args="safety_refusal_evaluation"
+```
+
+### 批量执行多场景
+
+```bash
+for eval in conversation_quality_benchmark chinese_language_assessment enterprise_performance_benchmark; do
+  echo "Executing: $eval"
+  mvn exec:java -Dexec.mainClass="com.evalscope.EvalScopeRunner" -Dexec.args="$eval"
+  sleep 30  # 间隔运行避免API频率限制
+done
+```
+
+### Docker环境中运行
+
+```dockerfile
+FROM openjdk:11-jre-slim
+
+WORKDIR /app/evalscope
+
+# 复制应用jar
+COPY target/evalscope-java-1.0.0.jar app.jar
+
+# 复制生产配置文件
+COPY examples/production-config.yaml src/main/resources/application.yaml
+
+# 运行评估（示例）
+CMD ["java", "-jar", "app.jar", "enterprise_performance_benchmark"]
+```
+
+## 📊 监控与指标
+
+运行后将收集以下企业级指标：
+
+1. **性能指标**：
+   - 响应时间分布（min/max/avg/p90/p95/p99）
+   - 吞吐量（query/second）
+   - 并发处理能力
+   - API成功率与失败模式分析
+
+2. **质量指标**：
+   - 对话相关性评分
+   - 中文理解准确度
+   - 安全性合规度
+   - 行业专用术语处理
+
+3. **成本分析**：
+   - 单次查询成本对比
+   - 批处理规模优化建议
+   - 预算使用率跟踪
+
+4. **可靠性评估**：
+   - 服务可用性统计
+   - 故障恢复时间统计
+   - 稳定性趋势分析
+
+## 🔄 配置更新策略
+
+企业环境中的配置更新建议：
+
+1. **灰度更新**：先局部验证性能评估准确性
+2. **版本控制**：使用标记管理配置版本（production-config-v1.2.yaml）
+3. **实时监控**：更新后立即观察指标变化
+4. **回滚机制**：保持旧版本配置以便快速回退
+
+本生产配置支持大型企业对AI模型进行全面、稳健、经济的质量评估。通过YAML的声明式配置方式，技术团队和非技术团队都能清晰地定义和管理评估策略！Enjoy! 🚀
+
+---
+*配置示例包含实际API和评估方法的组合，可根据具体业务需求进行调整*

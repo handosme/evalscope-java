@@ -1,0 +1,295 @@
+# EvalScope 性能基准测试专用配置
+# 包含全面的性能指标、并发测试、压力测试等场景
+
+evalscope:
+  # ======================== 模型配置 ========================
+  models:
+    # 模型1: OpenAI GPT-3.5 Turbo (高性能商业模型)
+    gpt-3-5-turbo-performance:
+      type: "chat"
+      provider: "openai"
+      enabled: false  # 需要配置API密钥
+      parameters:
+        model_name: "gpt-3.5-turbo"
+        max_tokens: 1000
+        temperature: 0.1  # 性能测试保持低温度提高可预测性
+        top_p: 1.0
+        request_timeout_ms: 30000
+      credentials:
+        api_key: "${OPENAI_API_KEY}"
+
+    # 模型2: GPT-4 (高性能但成本较高)
+    gpt-4-performance:
+      type: "chat"
+      provider: "openai"
+      enabled: false  # 需要配置API密钥
+      parameters:
+        model_name: "gpt-4"
+        max_tokens: 1000
+        temperature: 0.1
+        request_timeout_ms: 60000
+      credentials:
+        api_key: "${OPENAI_API_KEY}"
+
+    # 模型3: 高质量本地模型 (推理能力弱但成本免费)
+    local-llama-13b-performance:
+      type: "chat"
+      provider: "custom"
+      enabled: true
+      parameters:
+        model_name: "llama-2-13b-chat"
+        endpoint: "http://localhost:8080/v1/completions"
+        max_tokens: 1000
+        temperature: 0.1
+        top_k: 40
+        top_p: 0.7
+        request_timeout_ms: 45000
+      credentials:
+        api_key: "local-key"
+
+    # 模型4: Mock模型 (基准测试和调试)
+    mock-model-standard:
+      type: "chat"
+      provider: "mock"
+      enabled: true
+      parameters:
+        endpoint: "mock://localhost:8080"
+        max_tokens: 500
+        temperature: 0.7
+        response_delay_ms: 200  # 0.2秒模拟响应延迟
+        response_variation_ms: 50  # ±50ms随机延迟
+        success_rate: 0.95  # 95%成功率
+        availability_rate: 1.0  # 完全可用
+      credentials:
+        mock_auth: "test-mock"
+
+    # 模型5: 响应可控制的Mock模型
+    mock-model-performance:
+      type: "chat"
+      provider: "mock"
+      enabled: true
+      parameters:
+        endpoint: "mock://localhost:8081"
+        max_tokens: 1000
+        temperature: 0.1
+        response_delay_ms: 150  # 比标准模型更快
+        response_variation_ms: 30
+        success_rate: 0.98
+        simulate_load_delay: true
+      credentials:
+        mock_auth: "perf-mock"
+
+    # 模型6: 慢速Mock模型 (模拟高负载环境)
+    mock-model-stress:
+      type: "chat"
+      provider: "mock"
+      enabled: true
+      parameters:
+        endpoint: "mock://localhost:8082"
+        max_tokens: 2000
+        temperature: 0.5
+        response_delay_ms: 800  # 慢响应模拟负载
+        response_variation_ms: 100
+        success_rate: 0.85  # 较低成功率
+      credentials:
+        mock_auth: "stress-mock"
+
+  # ======================== 性能评估类型 ========================
+  evaluations:
+    # 基准测试：标准性能对比
+    benchmark_standard:
+      models: ["mock-model-standard", "mock-model-performance"]
+      evaluators: ["chat"]
+      maxConcurrency: 1
+      saveResults: true
+      outputPath: "results/benchmark-standard"
+      parameters:
+        max_examples: 50
+        timeout_seconds: 10
+        warmup_iterations: 5
+        test_iterations: 100
+        concurrent_levels: [1, 5, 10, 20]
+        benchmark_focus: "response_time"  # 专注响应时间
+
+    # 压力测试：高并发极限测试
+    stress_test:
+      models: ["mock-model-performance", "mock-model-stress"]
+      evaluators: ["chat"]
+      maxConcurrency: 20
+      saveResults: true
+      outputPath: "results/stress-test"
+      parameters:
+        max_examples: 200
+        timeout_seconds: 30
+        warmup_iterations: 10
+        test_iterations: 500
+        concurrent_levels: [10, 20, 50, 100]
+        load_pattern: "ramp_up"  # 逐步增加负载
+        duration_minutes: 60
+
+    # 长期稳定性测试 (Longevity Test)
+    longevity_test:
+      models: ["mock-model-performance"]
+      evaluators: ["chat"]
+      maxConcurrency: 5
+      saveResults: true
+      outputPath: "results/longevity"
+      parameters:
+        max_examples: 1000
+        timeout_seconds: 15
+        warmup_iterations: 20
+        test_iterations: 5000
+        concurrent_levels_per_minute: [5, 10, 15, 5]
+        test_duration_hours: 6
+        memory_tracking: true
+        error_recovery_tracking: true
+
+    # 混合性能测试：对比不同规模模型
+    comparative_stress:
+      models: ["mock-model-standard", "mock-model-performance", "mock-model-stress"]
+      evaluators: ["chat"]
+      maxConcurrency: 10
+      saveResults: true
+      outputPath: "results/comparative"
+      parameters:
+        max_examples: 300
+        timeout_seconds: 25
+        warmup_iterations: 15
+        test_iterations: 800
+        concurrent_levels: [5, 10, 15]
+        comparison_metrics: ["throughput", "latency", "reliability"]
+        statistical_significance_test: true
+
+    # 弹性基准测试：故障恢复能力
+    resiliency_test:
+      models: ["mock-model-standard"]
+      evaluators: ["chat"]
+      maxConcurrency: 15
+      saveResults: true
+      outputPath: "results/resiliency"
+      parameters:
+        max_examples: 250
+        timeout_seconds: 20
+        warmup_iterations: 5
+        test_iterations: 150
+        post_error_recovery_tests: true
+        circuit_breaker_simulation: true
+        availability_tracking: true
+
+  # ======================== 性能监控设置 ========================
+  settings:
+    # 性能相关系统级配置
+    max_job_concurrency: 10
+    response_timeout_seconds: 60
+    result_format: "json"
+    log_level: "INFO"
+
+    # 性能监控专用设置
+    performance_monitoring:
+      enable_metrics_collection: true
+      metrics_database_path: "metrics/performance.db"
+
+      # JVM性能监控
+      jvm_metrics:
+        heap_memory: true
+        gc_activity: true
+        thread_count: true
+
+      # 网络性能指标
+      network_metrics:
+        connection_pool_stats: true
+        response_time_histogram: true
+        error_rate_tracking: true
+
+      # 成本效益分析
+      cost_tracking:
+        enable_terser_cost_calculation: true
+        pricing_model: "token_based"
+        currency: "USD"
+        cost_per_1k_tokens: 0.002
+
+    # 企业集成
+    enterprise:
+      prometheus_metrics_enabled: true
+      grafana_dashboards: true
+      alerting:
+        slack_webhook: "${SLACK_WEBHOOK_URL}"
+        thresholds:
+          response_time_ms: 5000
+          error_rate_percent: 2.0
+          availability_percent: 99.5
+
+      # APM集成
+      apm_integration:
+        enabled: false
+        service_name: "evalscope-performance"
+        jaeger_enabled: false
+
+## 📋 使用示例
+
+### 标准性能基准测试
+```bash
+mvn exec:java -Dexec.mainClass="com.evalscope.EvalScopeRunner" \
+  -Dexec.args="benchmark_standard"
+```
+
+### 压力测试 (并发50)
+```bash
+mvn exec:java -Dexec.mainClass="com.evalscope.EvalScopeRunner" \
+  -Dexec.args="stress_test" \
+  -Dexec.vmArguments="-Xms1g -Xmx2g"  # 内存调优
+```
+
+### 长时间稳定性测试
+```bash
+# 生成统计报告
+mvn exec:java -Dexec.mainClass="com.evalscope.EvalScopeRunner" \
+  -Dexec.args="longevity_test"
+
+# 在后台运行持续长时间的测试
+nohup mvn exec:java -Dexec.mainClass="com.evalscope.EvalScopeRunner" \
+  -Dexec.args="longevity_test" > benchmark.log 2>&1 &
+```
+
+### 使用Docker容器化测试
+```dockerfile
+FROM openjdk:11-jre-slim
+
+WORKDIR /app/evalscope
+
+COPY target/evalscope-java-1.0.0.jar app.jar
+COPY examples/performance-benchmark-config.yaml src/main/resources/application.yaml
+
+# JVM性能配置 for benchmarks
+ENV JAVA_OPTS="-Xmx2g -XX:+UseG1GC -XX:+PrintGCDetails"
+
+# 启动性能测试
+CMD ["java", "-jar", "app.jar", "stress_test"]
+```
+
+## 🔧 运行中的参数调优
+
+```bash
+# 建议的JVM调优 (内存/垃圾收集)
+export MAVEN_OPTS="-Xms1g -Xmx4g -XX:+UnlockExperimentalVMOptions -XX:+UseG1GC"
+
+# Dockerfile JVM配置
+ENV JAVA_OPTS="-Xmx2g -XX:+UseZGC -XX:+PrintGCDetails -XX:+UseCompressedOops"
+```
+
+## 📊 结果分析要点
+
+### 核心指标观察
+1. **响应时间分布**: min/max/avg/p95/p99
+2. **吞吐量趋势**: 不同并发级别的性能变化
+3. **错误率变化**: 负载增加时可靠性分析
+4. **资源利用率**: 内存、CPU随负载变化
+
+### 扩展测试
+可基于此配置添加：
+- 更精细的成本分析
+- 详细的故障注入测试
+- 多地域部署性能评估
+- 动态扩缩容效果验证
+
+这套配置为生产环境的AI服务提供了全面的性能基准测试框架！🔥

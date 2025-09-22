@@ -1,0 +1,150 @@
+# 实际应用场景的 EvalScope YAML 配置示例
+evalscope:
+  # ======================== 模型配置 ========================
+  models:
+    # GPT-4 模型 - 高端对话模型评估
+    gpt-4-model:
+      type: "chat"
+      provider: "openai"
+      enabled: false  # 需配置 API key
+      parameters:
+        model_name: "gpt-4"
+        max_tokens: 2048
+        temperature: 0.7
+        top_p: 0.95
+        frequency_penalty: 0.0
+        presence_penalty: 0.0
+      credentials:
+        api_key: "${OPENAI_API_KEY}"
+
+    # GPT-3.5 Turbo - 经济型对话模型
+    gpt-35-turbo:
+      type: "chat"
+      provider: "openai"
+      enabled: false  # 需配置 API key
+      parameters:
+        model_name: "gpt-3.5-turbo"
+        max_tokens: 1000
+        temperature: 0.8
+      credentials:
+        api_key: "${OPENAI_API_KEY}"
+
+    # 本地模型 - Llama 2 中文版
+    local-llama2:
+      type: "chat"
+      provider: "custom"
+      enabled: true
+      parameters:
+        model_name: "llama2-chinese"
+        endpoint: "http://localhost:8080/v1/chat/completions"
+        max_tokens: 512
+        temperature: 0.9
+      credentials:
+        api_key: "local-model-key"
+
+    # 文本嵌入模型
+    text-embedding-ada:
+      type: "embedding"
+      provider: "openai"
+      enabled: false
+      parameters:
+        model_name: "text-embedding-ada-002"
+        dimensions: 1536
+      credentials:
+        api_key: "${OPENAI_API_KEY}"
+
+    # Mock 模型 - 用于测试和验证框架
+    test-mock-model:
+      type: "chat"
+      provider: "mock"
+      enabled: true
+      parameters:
+        endpoint: "mock://localhost:8080"
+        max_tokens: 100
+        temperature: 0.7
+        response_delay_ms: 100
+
+  # ======================== 评估配置 ========================
+  evaluations:
+    # 基础对话质量评估
+    conversation_quality:
+      models: ["test-mock-model"]
+      evaluators: ["chat"]
+      maxConcurrency: 1
+      saveResults: true
+      outputPath: "results/conversation"
+      parameters:
+        max_examples: 20
+        timeout_seconds: 30
+        include_context_evaluation: true
+
+    # 创意写作评估
+    creative_writing:
+      models: ["test-mock-model"]
+      evaluators: ["chat"]
+      maxConcurrency: 2
+      saveResults: true
+      outputPath: "results/creative"
+      parameters:
+        max_examples: 15
+        timeout_seconds: 60
+        prompt_type: "creative"
+        evaluation_criteria: ["coherence", "creativity", "relevance"]
+
+    # 多模型性能对比评估
+    multi_model_performance:
+      models: ["test-mock-model"]
+      evaluators: ["performance"]
+      maxConcurrency: 3
+      saveResults: true
+      outputPath: "results/performance"
+      parameters:
+        max_examples: 50
+        timeout_seconds: 20
+        warmup_iterations: 10
+        test_iterations: 200
+        metrics: ["response_time", "throughput", "success_rate", "p95", "p99"]
+        concurrent_requests: [1, 5, 10]
+
+    # 压力测试评估
+    stress_test:
+      models: ["test-mock-model"]
+      evaluators: ["performance"]
+      maxConcurrency: 5
+      saveResults: true
+      outputPath: "results/stress"
+      parameters:
+        max_examples: 200
+        timeout_seconds: 10
+        warmup_iterations: 5
+        test_iterations: 500
+        load_pattern: "ramp_up"
+        start_concurrent: 1
+        end_concurrent: 10
+        ramp_duration_seconds: 30
+
+    # 稳定性对比评估
+    stability_test:
+      models: ["test-mock-model"]
+      evaluators: ["chat", "performance"]
+      maxConcurrency: 2
+      saveResults: true
+      outputPath: "results/stability"
+      parameters:
+        max_examples: 100
+        timeout_seconds: 15
+        warmup_iterations: 15
+        test_iterations: 200
+        test_duration_minutes: 10
+        restart_interval: 50
+
+  # ======================== 全局设置 ========================
+  settings:
+    max_job_concurrency: 5
+    response_timeout_seconds: 30
+    result_format: "json"  # options: json, csv, xml
+    log_level: "INFO"  # options: TRACE, DEBUG, INFO, WARN, ERROR
+    enable_detailed_logging: true
+    report_generation: true
+    save_intermediate_results: true
+    output_timestamp_format: "yyyy-MM-dd_HH-mm-ss"
