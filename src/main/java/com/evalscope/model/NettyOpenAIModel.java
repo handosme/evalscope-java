@@ -276,7 +276,8 @@ public class NettyOpenAIModel extends ChatModel {
 
         // Build message
         OpenAIRequest.Message userMessage = new OpenAIRequest.Message("user", prompt);
-        List<OpenAIRequest.Message> messages = List.of(userMessage);
+        List<OpenAIRequest.Message> messages = new ArrayList<>();
+        messages.add(userMessage);
         request.setMessages(messages);
 
         // Merge parameters

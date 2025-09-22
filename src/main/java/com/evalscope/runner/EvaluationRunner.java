@@ -216,13 +216,13 @@ public class EvaluationRunner {
 
     private List<TestCase> createSampleTestCases() {
         // Fallback to sample test cases
-        return Arrays.asList(
-            new TestCase("test1", "What is 2+2?", "4"),
-            new TestCase("test2", "Capital of France?", "Paris"),
-            new TestCase("test3", "Translate 'hello' to French", "bonjour"),
-            new TestCase("test4", "What is the largest planet?", "Jupiter"),
-            new TestCase("test5", "Who wrote Romeo and Juliet?", "Shakespeare")
-        );
+        List<TestCase> testCases = new ArrayList<>();
+        testCases.add(new TestCase("test1", "What is 2+2?", "4"));
+        testCases.add(new TestCase("test2", "Capital of France?", "Paris"));
+        testCases.add(new TestCase("test3", "Translate 'hello' to French", "bonjour"));
+        testCases.add(new TestCase("test4", "What is the largest planet?", "Jupiter"));
+        testCases.add(new TestCase("test5", "Who wrote Romeo and Juliet?", "Shakespeare"));
+        return testCases;
     }
 
     public void shutdown() {

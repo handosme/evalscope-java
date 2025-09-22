@@ -1,47 +1,47 @@
 # EvalScope Java
 
-Java implementation of the EvalScope AI model evaluation framework.
+EvalScope AI模型评估框架的Java实现。
 
-## Features
+## 功能特点
 
-- **Multi-Model Support**: Evaluate different types of AI models (Chat, Embedding, etc.)
-- **Pluggable Evaluators**: Extensible evaluation system with different evaluation strategies
-- **Performance Benchmarking**: Built-in performance testing and benchmarking
-- **Configuration Management**: Flexible configuration system with HOCON format
-- **Concurrent Execution**: Support for running multiple evaluations in parallel
-- **Comprehensive Reporting**: Detailed evaluation reports with metrics and statistics
-- **Extensible Architecture**: Easy to add new models, evaluators, and benchmarks
+- **多模型支持**：评估不同类型的AI模型（聊天、嵌入等）
+- **可插拔评估器**：具有不同评估策略的可扩展评估系统
+- **性能基准测试**：内置性能测试和基准测试功能
+- **配置管理**：使用HOCON格式的灵活配置系统
+- **并发执行**：支持并行运行多个评估
+- **全面报告**：包含指标和统计数据的详细评估报告
+- **可扩展架构**：易于添加新模型、评估器和基准测试
 
-## Architecture
+## 架构
 
 ```
 com.evalscope/
-├── model/              # Model interfaces and implementations
-├── evaluator/          # Evaluation system
-├── benchmark/          # Benchmark utilities
-├── config/             # Configuration management
-├── runner/             # Execution engine
-└── utils/              # Utility classes
+├── model/              # 模型接口和实现
+├── evaluator/          # 评估系统
+├── benchmark/          # 基准测试工具
+├── config/             # 配置管理
+├── runner/             # 执行引擎
+└── utils/              # 工具类
 ```
 
-## Quick Start
+## 快速开始
 
-### Build and Run
+### 构建和运行
 
 ```bash
-# Build the project
+# 构建项目
 mvn clean compile
 
-# Run with default configuration
+# 使用默认配置运行
 mvn exec:java -Dexec.mainClass="com.evalscope.EvalScopeRunner"
 
-# Run specific evaluation
+# 运行特定评估
 mvn exec:java -Dexec.mainClass="com.evalscope.EvalScopeRunner" -Dexec.args="default_evaluation"
 ```
 
-### Configuration
+### 配置
 
-Configure models and evaluations in `src/main/resources/application.conf`:
+在`src/main/resources/application.conf`中配置模型和评估：
 
 ```hocon
 evalscope {
@@ -72,56 +72,61 @@ evalscope {
 }
 ```
 
-## Usage Examples
+## 使用示例
 
-### Basic Model Evaluation
+### 基本模型评估
 
 ```java
-// Create configuration
+// 创建配置
 ConfigManager configManager = ConfigManager.createDefault();
 
-// Configure model
+// 配置模型
 ModelConfig modelConfig = new ModelConfig("gpt-3.5", "chat", "openai");
 modelConfig.addParameter("api_key", "your-api-key");
 configManager.addModelConfig(modelConfig);
 
-// Configure evaluation
+// 配置评估
 EvaluationConfig evalConfig = new EvaluationConfig("chat-test");
-evalConfig.setModelIds(Arrays.asList("gpt-3.5"));
-evalConfig.setEvaluatorTypes(Arrays.asList("chat", "performance"));
+List<String> modelIds = new ArrayList<>();
+modelIds.add("gpt-3.5");
+evalConfig.setModelIds(modelIds);
+List<String> evaluatorTypes = new ArrayList<>();
+evaluatorTypes.add("chat");
+evaluatorTypes.add("performance");
+evalConfig.setEvaluatorTypes(evaluatorTypes);
 configManager.addEvaluationConfig(evalConfig);
 
-// Run evaluation
+// 运行评估
 EvalScopeRunner runner = new EvalScopeRunner(configManager);
 EvaluationReport report = runner.runEvaluation("chat-test");
 ```
 
-### Custom Model Implementation
+### 自定义模型实现
 
 ```java
 public class MyCustomModel extends ChatModel {
     @Override
     public void load() throws Exception {
-        // Load your model
+        // 加载您的模型
     }
 
     @Override
     public void unload() throws Exception {
-        // Unload your model
+        // 卸载您的模型
     }
 
     @Override
     public ModelResponse generate(String prompt, Map<String, Object> parameters) {
-        // Generate response using your model
+        // 使用您的模型生成响应
         ModelResponse response = new ModelResponse(getModelId(), "chat");
-        response.setOutput("Generated response");
+        response.setOutput("生成的响应");
         response.setSuccess(true);
         return response;
     }
 }
 ```
 
-### Custom Evaluator
+### 自定义评估器
 
 ```java
 public class MyCustomEvaluator implements Evaluator {
@@ -137,58 +142,58 @@ public class MyCustomEvaluator implements Evaluator {
 
     @Override
     public EvaluationResult evaluate(Model model, EvaluationData data) {
-        // Implement your evaluation logic
+        // 实现您的评估逻辑
         EvaluationResult result = new EvaluationResult(getEvaluatorName(), model.getModelId(), data.getTaskType());
-        // ... evaluation logic ...
+        // ... 评估逻辑 ...
         return result;
     }
 }
 ```
 
-## Key Concepts
+## 核心概念
 
-### Models
-- **ChatModel**: For conversational AI models
-- **EmbeddingModel**: For text embedding models
-- Custom model types extending the base `Model` interface
+### 模型
+- **ChatModel**：用于对话AI模型
+- **EmbeddingModel**：用于文本嵌入模型
+- 扩展基础`Model`接口的自定义模型类型
 
-### Evaluators
-- **ChatModelEvaluator**: Evaluates chat/conversational models
-- **PerformanceBenchmark**: Benchmarks model performance
-- Custom evaluators implementing the `Evaluator` interface
+### 评估器
+- **ChatModelEvaluator**：评估聊天/对话模型
+- **PerformanceBenchmark**：对模型性能进行基准测试
+- 实现`Evaluator`接口的自定义评估器
 
-### Benchmarks
-- **PerformanceBenchmark**: Measures response time, throughput, etc.
-- Custom benchmarks implementing the `Benchmark` interface
+### 基准测试
+- **PerformanceBenchmark**：测量响应时间、吞吐量等
+- 实现`Benchmark`接口的自定义基准测试
 
-## Performance Metrics
+## 性能指标
 
-During evaluation, the following metrics are collected:
+在评估过程中，收集以下指标：
 
-- Response time statistics (min, max, average, median, P95, P99)
-- Throughput (requests per second, tokens per second)
-- Success/failure rates
-- Similarity scores (for text generation tasks)
-- Custom metrics based on evaluator implementation
+- 响应时间统计（最小值、最大值、平均值、中位数、P95、P99）
+- 吞吐量（每秒请求数、每秒令牌数）
+- 成功/失败率
+- 相似度分数（用于文本生成任务）
+- 基于评估器实现的自定义指标
 
-## Testing
+## 测试
 
 ```bash
-# Run tests
+# 运行测试
 mvn test
 
-# Run specific test
+# 运行特定测试
 mvn test -Dtest=EvalScopeTest
 ```
 
-## License
+## 许可证
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+本项目采用MIT许可证 - 详情请参阅LICENSE文件。
 
-## Contributing
+## 贡献
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+1. Fork仓库
+2. 创建您的功能分支（`git checkout -b feature/amazing-feature`）
+3. 提交您的更改（`git commit -m 'Add some amazing feature'`）
+4. 推送到分支（`git push origin feature/amazing-feature`）
+5. 打开Pull Request

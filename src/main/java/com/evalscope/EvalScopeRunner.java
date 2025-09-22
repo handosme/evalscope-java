@@ -100,8 +100,12 @@ public class EvalScopeRunner {
 
         // Create default evaluation configuration
         com.evalscope.config.EvaluationConfig defaultEval = new com.evalscope.config.EvaluationConfig("default_evaluation");
-        defaultEval.setModelIds(Arrays.asList("mock-chat-model"));
-        defaultEval.setEvaluatorTypes(Arrays.asList("chat"));
+        List<String> modelIds = new ArrayList<>();
+        modelIds.add("mock-chat-model");
+        defaultEval.setModelIds(modelIds);
+        List<String> evaluatorTypes = new ArrayList<>();
+        evaluatorTypes.add("chat");
+        defaultEval.setEvaluatorTypes(evaluatorTypes);
         defaultEval.addParameter("max_examples", 10);
         defaultEval.setMaxConcurrency(1);
         defaultEval.setSaveResults(true);
@@ -323,7 +327,9 @@ public class EvalScopeRunner {
             configManager.addModelConfig(modelConfig);
 
             // Set the model ID for the evaluation
-            evalConfig.setModelIds(Arrays.asList(modelId));
+            List<String> modelIdList = new ArrayList<>();
+            modelIdList.add(modelId);
+            evalConfig.setModelIds(modelIdList);
         }
 
         // Handle rate limiting
