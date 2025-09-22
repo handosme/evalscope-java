@@ -52,7 +52,7 @@ public class EvalScopeRunner {
             // Configure based on command line arguments
             runner.configureFromCommandLine(cmdArgs);
 
-            if (args.length == 0 || (cmdArgs.getConfigFile() == null && cmdArgs.getUrl() == null)) {
+            if (args.length == 0 || (cmdArgs.getConfigFile() == null && cmdArgs.getUrl() == null && cmdArgs.getApiBaseUrl() == null)) {
                 // Run with default configuration when no specific args provided
                 System.out.println("Running with default configuration...");
                 runner.runDefaultEvaluation();
@@ -274,10 +274,11 @@ public class EvalScopeRunner {
         configManager.addEvaluationConfig(evalConfig);
 
         // Create model configuration if URL and API key are provided
-        if (cmdArgs.getUrl() != null) {
+        String baseUrl = cmdArgs.getUrl() != null ? cmdArgs.getUrl() : cmdArgs.getApiBaseUrl();
+        if (baseUrl != null) {
             String modelId = cmdArgs.getModel() != null ? cmdArgs.getModel() : "default-model";
             com.evalscope.config.ModelConfig modelConfig = new com.evalscope.config.ModelConfig(modelId, "chat", "openai");
-            modelConfig.addParameter("endpoint", cmdArgs.getUrl());
+            modelConfig.addParameter("endpoint", baseUrl);
 
             // Add API key to credentials if provided
             if (cmdArgs.getApiKey() != null) {
