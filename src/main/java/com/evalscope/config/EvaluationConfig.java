@@ -98,4 +98,14 @@ public class EvaluationConfig {
     public void addParameter(String key, Object value) {
         this.parameters.put(key, value);
     }
+
+    private String runMode = "normal";
+
+    public String getRunMode() {
+        return runMode;
+    }
+
+    public void setRunMode(String runMode) {
+        this.runMode = runMode;
+    }
 }

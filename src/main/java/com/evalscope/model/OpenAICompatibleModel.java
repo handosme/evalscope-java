@@ -13,11 +13,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
+import java.util.function.Consumer;
 
 /**
  * OpenAI兼容的聊天模型实现
@@ -105,33 +110,79 @@ public class OpenAICompatibleModel extends ChatModel {
         ModelResponse response = new ModelResponse(getModelId(), "chat");
 
         try {
+            // 检查是否启用流式
+            boolean isStreaming = parameters.containsKey("stream") && (Boolean) parameters.get("stream");
+
             // 构建请求
             Map<String, Object> requestBody = buildRequestBody(prompt, parameters);
             String requestJson = objectMapper.writeValueAsString(requestBody);
 
             logger.debug("Sending request to {}: {}", apiEndpoint, requestJson);
 
-            // 发送HTTP请求并获取响应
-            int retryCount = 0;
-            String responseJson = null;
-            boolean success = false;
-
-            while (retryCount <= maxRetries && !success) {
-                try {
-                    responseJson = sendRequest(requestJson);
-                    success = true;
-                } catch (Exception e) {
-                    retryCount++;
-                    if (retryCount > maxRetries) {
-                        throw e;
+            if (isStreaming) {
+                // 流式响应处理
+                StringBuilder fullContent = new StringBuilder();
+                
+                // 发送流式请求
+                sendStreamingRequest(requestJson, chunkData -> {
+                    try {
+                        // 处理SSE格式 (data: {...})
+                        if (chunkData.startsWith("data:")) {
+                            chunkData = chunkData.substring(5).trim();
+                        }
+                        
+                        // 跳过空行和结束标记
+                        if (chunkData.isEmpty() || "[DONE]".equals(chunkData)) {
+                            return;
+                        }
+                        
+                        // 解析JSON
+                        Map<String, Object> chunkMap = objectMapper.readValue(chunkData, Map.class);
+                        List<Map<String, Object>> choices = (List<Map<String, Object>>) chunkMap.get("choices");
+                        if (choices != null && !choices.isEmpty()) {
+                            Map<String, Object> choice = choices.get(0);
+                            Map<String, Object> delta = (Map<String, Object>) choice.get("delta");
+                            
+                            if (delta != null && delta.containsKey("content")) {
+                                String content = (String) delta.get("content");
+                                fullContent.append(content);
+                                
+                                // 更新流式响应
+                                response.setOutput(fullContent.toString());
+                                response.setStreaming(true);
+                            }
+                        }
+                    } catch (Exception e) {
+                        logger.error("Error processing streaming chunk", e);
                     }
-                    logger.warn("Request failed, retrying {}/{}: {}", retryCount, maxRetries, e.getMessage());
-                    Thread.sleep(retryDelay * retryCount); // 指数退避
-                }
-            }
+                });
 
-            // 解析响应
-            parseResponse(responseJson, response, startTime);
+                response.setOutput(fullContent.toString());
+                response.setSuccess(true);
+                response.setProcessingTimeMs(System.currentTimeMillis() - startTime);
+            } else {
+                // 标准响应处理
+                int retryCount = 0;
+                String responseJson = null;
+                boolean success = false;
+
+                while (retryCount <= maxRetries && !success) {
+                    try {
+                        responseJson = sendRequest(requestJson);
+                        success = true;
+                    } catch (Exception e) {
+                        retryCount++;
+                        if (retryCount > maxRetries) {
+                            throw e;
+                        }
+                        logger.warn("Request failed, retrying {}/{}: {}", retryCount, maxRetries, e.getMessage());
+                        Thread.sleep(retryDelay * retryCount);
+                    }
+                }
+
+                // 解析响应
+                parseResponse(responseJson, response, startTime);
+            }
 
         } catch (Exception e) {
             logger.error("Error generating response: {}", e.getMessage(), e);
@@ -140,6 +191,40 @@ public class OpenAICompatibleModel extends ChatModel {
         }
 
         return response;
+    }
+
+    /**
+     * 发送流式请求
+     */
+    private void sendStreamingRequest(String requestBody, Consumer<String> chunkConsumer) throws IOException {
+        if (apiEndpoint == null) {
+            throw new IllegalStateException("API endpoint is not configured");
+        }
+
+        HttpPost request = new HttpPost(apiEndpoint);
+        request.setEntity(new StringEntity(requestBody, ContentType.APPLICATION_JSON));
+
+        // 设置认证头部
+        if (apiKey != null && !apiKey.isEmpty()) {
+            request.setHeader("Authorization", "Bearer " + apiKey);
+        }
+        request.setHeader("Content-Type", "application/json");
+        request.setHeader("Accept", "text/event-stream");
+
+        try (CloseableHttpResponse response = httpClient.execute(request);
+             InputStream is = response.getEntity().getContent();
+             BufferedReader reader = new BufferedReader(new InputStreamReader(is))) {
+            
+            int statusCode = response.getCode();
+            if (statusCode >= 200 && statusCode < 300) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    chunkConsumer.accept(line);
+                }
+            } else {
+                throw new IOException("HTTP request failed with status " + statusCode);
+            }
+        }
     }
 
     @Override

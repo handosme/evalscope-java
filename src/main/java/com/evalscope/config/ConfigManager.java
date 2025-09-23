@@ -156,13 +156,19 @@ public class ConfigManager implements IConfigManager {
 
         if (configNode.has("models")) {
             List<String> modelIds = new ArrayList<>();
-            configNode.get("models").forEach(node -> modelIds.add(node.asText()));
+            JsonNode modelsNode = configNode.get("models");
+            for (int i = 0; i < modelsNode.size(); i++) {
+                modelIds.add(modelsNode.get(i).asText());
+            }
             config.setModelIds(modelIds);
         }
 
         if (configNode.has("evaluators")) {
             List<String> evaluatorTypes = new ArrayList<>();
-            configNode.get("evaluators").forEach(node -> evaluatorTypes.add(node.asText()));
+            JsonNode evaluatorsNode = configNode.get("evaluators");
+            for (int i = 0; i < evaluatorsNode.size(); i++) {
+                evaluatorTypes.add(evaluatorsNode.get(i).asText());
+            }
             config.setEvaluatorTypes(evaluatorTypes);
         }
 

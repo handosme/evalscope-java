@@ -71,7 +71,7 @@ public class ChatModelEvaluator implements Evaluator {
             List<TestResult> testResults = new ArrayList<>();
 
             for (TestCase testCase : data.getTestCases()) {
-                TestResult testResult = evaluateSingleTest(chatModel, testCase);
+                TestResult testResult = evaluateSingleTest(chatModel, testCase, parameters);
                 testResults.add(testResult);
             }
 
@@ -88,6 +88,10 @@ public class ChatModelEvaluator implements Evaluator {
     }
 
     private TestResult evaluateSingleTest(ChatModel model, TestCase testCase) {
+        return evaluateSingleTest(model, testCase, null);
+    }
+
+    private TestResult evaluateSingleTest(ChatModel model, TestCase testCase, Map<String, Object> parameters) {
         TestResult testResult = new TestResult(
                 testCase.getId(),
                 testCase.getInput(),
@@ -97,7 +101,12 @@ public class ChatModelEvaluator implements Evaluator {
         try {
             long startTime = System.currentTimeMillis();
 
-            ModelResponse response = model.generate(testCase.getInput());
+            ModelResponse response;
+            if (parameters != null && !parameters.isEmpty()) {
+                response = model.generate(testCase.getInput(), parameters);
+            } else {
+                response = model.generate(testCase.getInput());
+            }
 
             long processingTime = System.currentTimeMillis() - startTime;
             Map<String, Object> metrics = new HashMap<>();

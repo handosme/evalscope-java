@@ -270,6 +270,9 @@ public class EvalScopeRunner {
         if (cmdArgs.getIncludeAccuracy() != null) {
             evalConfig.addParameter("include_accuracy", cmdArgs.getIncludeAccuracy());
         }
+        if (cmdArgs.getRunModel() != null) {
+            evalConfig.addParameter("run_model", cmdArgs.getRunModel());
+        }
 
         // Apply mode parameters
         if (cmdArgs.getDryRun() != null && cmdArgs.getDryRun()) {

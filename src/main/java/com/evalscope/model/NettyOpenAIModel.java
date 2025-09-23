@@ -123,6 +123,14 @@ public class NettyOpenAIModel extends ChatModel {
 
         Consumer<String> chunkConsumer = chunkData -> {
             try {
+                // Handle OpenAI streaming format (data: {...})
+                if (chunkData.startsWith("data:")) {
+                    chunkData = chunkData.substring(5).trim();
+                }
+                // Skip [DONE] and empty lines
+                if (chunkData.isEmpty() || "[DONE]".equals(chunkData)) {
+                    return;
+                }
                 // Parse JSON chunk
                 OpenAIResponse chunkResponse = objectMapper.readValue(chunkData, OpenAIResponse.class);
 
