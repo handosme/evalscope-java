@@ -10,6 +10,7 @@ import io.netty.util.concurrent.Promise;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -180,13 +181,23 @@ public class NettyOpenAIModel extends ChatModel {
 
             while (retryCount < MAX_RETRIES && !success) {
                 try {
-                    httpClient.sendStreamingRequest(
+                    CompletableFuture<Void> requestFuture = httpClient.sendStreamingRequest(
                         apiEndpoint,
                         requestJson,
                         "Bearer " + apiKey,
                         chunkConsumer,
                         errorConsumer
-                    ).orTimeout(90, TimeUnit.SECONDS).join();
+                    );
+
+                   // Java 8 compatible timeout - use get with timeout instead of orTimeout
+                    try {
+                        requestFuture.get(90, TimeUnit.SECONDS);
+                    } catch (java.util.concurrent.TimeoutException e) {
+                        logger.error("Streaming request timed out after 90 seconds", e);
+                        response.setSuccess(false);
+                        response.setErrorMessage("Streaming request timed out after 90 seconds");
+                        return;
+                    }
 
                     success = true;
 

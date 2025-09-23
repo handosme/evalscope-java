@@ -128,8 +128,14 @@ public class StreamingIntegrationTest {
         nettyModel.load();
 
         String prompt = "Generate a creative story about technology";
-        Map<String, Object> streamingParams = Map.of("stream", true, "temperature", 0.8, "max_tokens", 150);
-        Map<String, Object> standardParams = Map.of("stream", false, "temperature", 0.8, "max_tokens", 150);
+        Map<String, Object> streamingParams = new java.util.HashMap<String, Object>();
+        streamingParams.put("stream", true);
+        streamingParams.put("temperature", 0.8);
+        streamingParams.put("max_tokens", 150);
+        Map<String, Object> standardParams = new java.util.HashMap<String, Object>();
+        standardParams.put("stream", false);
+        standardParams.put("temperature", 0.8);
+        standardParams.put("max_tokens", 150);
 
         // Test streaming time
         long streamingStart = System.currentTimeMillis();
@@ -167,15 +173,19 @@ public class StreamingIntegrationTest {
         String prompt = "What is machine learning?";
 
         // Test 1: Explicit stream=false
-        ModelResponse response1 = nettyModel.generate(prompt, Map.of("stream", false));
+        java.util.Map<String, Object> params1 = new java.util.HashMap<>();
+        params1.put("stream", false);
+        ModelResponse response1 = nettyModel.generate(prompt, params1);
         Assert.assertFalse("Response should not be streaming when stream=false", response1.isStreaming());
 
         // Test 2: Explicit stream=true
-        ModelResponse response2 = nettyModel.generate(prompt, Map.of("stream", true));
+        java.util.Map<String, Object> params2 = new java.util.HashMap<>();
+        params2.put("stream", true);
+        ModelResponse response2 = nettyModel.generate(prompt, params2);
         Assert.assertTrue("Response should be streaming when stream=true", response2.isStreaming());
 
         // Test 3: No stream parameter (default non-streaming)
-        ModelResponse response3 = nettyModel.generate(prompt, Map.of());
+        ModelResponse response3 = nettyModel.generate(prompt, new java.util.HashMap<>());
         Assert.assertFalse("Response should not be streaming when no stream parameter", response3.isStreaming());
 
         logger.info("✅ Parameter handling test completed");
