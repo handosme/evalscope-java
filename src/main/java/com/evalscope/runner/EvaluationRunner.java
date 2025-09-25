@@ -48,9 +48,15 @@ public class EvaluationRunner {
     public EvaluationReport runEvaluation(EvaluationConfig config) {
         EvaluationReport report = new EvaluationReport(config.getEvaluationName());
 
-        System.out.println("Starting evaluation: " + config.getEvaluationName());
-        System.out.println("Models to evaluate: " + config.getModelIds());
-        System.out.println("Evaluators to use: " + config.getEvaluatorTypes());
+        if ("benchmark".equals(config.getRunMode())) {
+            // 压测模式 - 只显示必要信息
+            System.out.println("Running benchmark for: " + config.getEvaluationName());
+        } else {
+            // 正常模式 - 显示详细日志
+            System.out.println("Starting evaluation: " + config.getEvaluationName());
+            System.out.println("Models to evaluate: " + config.getModelIds());
+            System.out.println("Evaluators to use: " + config.getEvaluatorTypes());
+        }
 
         try {
             // Run evaluations for each model
@@ -68,8 +74,33 @@ public class EvaluationRunner {
                         continue;
                     }
 
-                    runModelEvaluation(model, config, report);
-                    runModelBenchmarks(model, config, report);
+                    // Check run_model parameter to determine which operations to perform
+                    String runModelStrategy = config.getParameters().getOrDefault("run_model", "all").toString();
+
+                    // Validate runModel value
+                    if (!Arrays.asList("all", "evaluation", "benchmark").contains(runModelStrategy)) {
+                        System.err.println("Invalid run_model parameter: " + runModelStrategy + ". Using default: all");
+                        runModelStrategy = "all";
+                    }
+
+                    switch (runModelStrategy) {
+                        case "evaluation":
+                            // Only run evaluation, skip benchmarks
+                            System.out.println("Running model evaluation (skipping benchmarks due to --run-model evaluation)");
+                            runModelEvaluation(model, config, report);
+                            break;
+                        case "benchmark":
+                            // Only run benchmarks, skip evaluation
+                            System.out.println("Running model benchmarks (skipping evaluation due to --run-model benchmark)");
+                            runModelBenchmarks(model, config, report);
+                            break;
+                        case "all":
+                        default:
+                            // Run both evaluation and benchmarks (default behavior)
+                            runModelEvaluation(model, config, report);
+                            runModelBenchmarks(model, config, report);
+                            break;
+                    }
 
                 } catch (Exception e) {
                     System.err.println("Error evaluating model " + modelId + ": " + e.getMessage());

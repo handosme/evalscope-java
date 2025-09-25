@@ -106,7 +106,7 @@ public class ArgumentParser {
             cmdArgs.setStop(argMap.get("stop"));
         }
         if (argMap.containsKey("stream")) {
-            cmdArgs.setStream(parseBoolean(argMap.get("stream"), false));
+            cmdArgs.setStream(argMap.containsKey("stream"));
         }
         // For system-prompt parameter, using "system" as the command line parameter for simplicity
         if (argMap.containsKey("system")) {
@@ -192,6 +192,9 @@ public class ArgumentParser {
         if (argMap.containsKey("include-accuracy")) {
             cmdArgs.setIncludeAccuracy(parseBoolean(argMap.get("include-accuracy"), true));
         }
+        if (argMap.containsKey("run-model")) {
+            cmdArgs.setRunModel(argMap.get("run-model"));
+        }
     }
 
     private static void parseAuthParameters(Map<String, String> argMap, CommandLineArgs cmdArgs) {
@@ -225,6 +228,9 @@ public class ArgumentParser {
         if (argMap.containsKey("version")) {
             cmdArgs.setVersion(argMap.get("version"));
         }
+        if (argMap.containsKey("run-mode")) {
+            cmdArgs.setRunMode(argMap.get("run-mode"));
+        }
     }
 
     private static int parseInt(String value, int defaultValue) {
@@ -247,7 +253,7 @@ public class ArgumentParser {
 
     private static boolean parseBoolean(String value, boolean defaultValue) {
         if (value == null) return defaultValue;
-        return "true".equalsIgnoreCase(value) || "1".equals(value) || "yes".equalsIgnoreCase(value);
+        return !("false".equalsIgnoreCase(value) || "0".equals(value) || "no".equalsIgnoreCase(value));
     }
 
     /**
@@ -306,6 +312,7 @@ public class ArgumentParser {
         System.out.println("  --metrics <metrics>            Comma-separated metrics");
         System.out.println("  --include-latency <bool>       Include latency metrics (default: true)");
         System.out.println("  --include-accuracy <bool>      Include accuracy metrics (default: true)");
+        System.out.println("  --run-model <mode>             Run mode for models: all|evaluation|benchmark (default: all)");
         System.out.println();
         System.out.println("Authentication Parameters:");
         System.out.println("  --auth-type <type>             Authentication type");

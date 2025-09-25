@@ -10,6 +10,8 @@ import com.evalscope.runner.EvaluationReport;
 
 import java.util.Arrays;
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
 
 public class EvalScopeRunner {
     private final IConfigManager configManager;
@@ -267,6 +269,9 @@ public class EvalScopeRunner {
         }
         if (cmdArgs.getIncludeAccuracy() != null) {
             evalConfig.addParameter("include_accuracy", cmdArgs.getIncludeAccuracy());
+        }
+        if (cmdArgs.getRunModel() != null) {
+            evalConfig.addParameter("run_model", cmdArgs.getRunModel());
         }
 
         // Apply mode parameters

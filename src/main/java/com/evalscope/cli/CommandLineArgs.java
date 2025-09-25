@@ -61,6 +61,8 @@ public class CommandLineArgs {
     private String metrics;
     private Boolean includeLatency = true;
     private Boolean includeAccuracy = true;
+    // runModel parameter: "all", "evaluation", "benchmark" - controls which model operations to run
+    private String runModel = "all";
 
     // Authentication parameters
     private String authType;
@@ -75,6 +77,8 @@ public class CommandLineArgs {
     private String logLevel = "INFO";
     private Boolean help = false;
     private String version;
+    // Run mode: "normal" or "benchmark"
+    private String runMode = "normal";
 
     // Constructor
     public CommandLineArgs() {}
@@ -191,6 +195,9 @@ public class CommandLineArgs {
     public Boolean getIncludeAccuracy() { return includeAccuracy; }
     public void setIncludeAccuracy(Boolean includeAccuracy) { this.includeAccuracy = includeAccuracy; }
 
+    public String getRunModel() { return runModel; }
+    public void setRunModel(String runModel) { this.runModel = runModel; }
+
     public String getAuthType() { return authType; }
     public void setAuthType(String authType) { this.authType = authType; }
 
@@ -214,6 +221,9 @@ public class CommandLineArgs {
 
     public String getVersion() { return version; }
     public void setVersion(String version) { this.version = version; }
+
+    public String getRunMode() { return runMode; }
+    public void setRunMode(String runMode) { this.runMode = runMode; }
 
     @Override
     public String toString() {
@@ -240,6 +250,8 @@ public class CommandLineArgs {
                 ", outputFormat='" + outputFormat + '\'' +
                 ", saveResults=" + saveResults +
                 ", evaluationType='" + evaluationType + '\'' +
+                ", runModel='" + runModel + '\'' +
+                ", runMode='" + runMode + '\'' +
                 ", logLevel='" + logLevel + '\'' +
                 '}';
     }
