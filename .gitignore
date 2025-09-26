@@ -10,6 +10,7 @@
 /.idea/
 /.claude/
 /.codebuddy/
+/.qoder/
 /target/
 /pos/
 /logs/
