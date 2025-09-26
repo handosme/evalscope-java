@@ -14,6 +14,7 @@ public class BatchJobConfig {
     private int maxBatchSize;
     private boolean enableCompression;
     private int maxConnectionsPerHost;
+    private int batchExecutionTimeout;
 
     /**
      * 创建一个默认配置的BatchJobConfig
@@ -27,6 +28,7 @@ public class BatchJobConfig {
         this.maxBatchSize = 50;
         this.enableCompression = true;
         this.maxConnectionsPerHost = 200;
+        this.batchExecutionTimeout = 60000; // 60 seconds default timeout
     }
 
     /**
@@ -98,6 +100,11 @@ public class BatchJobConfig {
             return this;
         }
 
+        public Builder batchExecutionTimeout(int batchExecutionTimeout) {
+            config.batchExecutionTimeout = batchExecutionTimeout;
+            return this;
+        }
+
         public BatchJobConfig build() {
             return config;
         }
@@ -142,5 +149,9 @@ public class BatchJobConfig {
 
     public int getMaxConnectionsPerHost() {
         return maxConnectionsPerHost;
+    }
+
+    public int getBatchExecutionTimeout() {
+        return batchExecutionTimeout;
     }
 }

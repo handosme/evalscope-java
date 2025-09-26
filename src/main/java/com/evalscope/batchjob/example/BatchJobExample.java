@@ -21,13 +21,14 @@ public class BatchJobExample {
     public static void main(String[] args) {
         // 创建配置
         BatchJobConfig config = BatchJobConfig.builder()
-                .apiEndpoint("https://api.ihansen.org/")
+                .apiEndpoint("https://www.baidu.com/")
                 .apiKey("your-api-key-here")
-                .maxConcurrentRequests(50)
+                .maxConcurrentRequests(1)
                 .connectionTimeout(5000)
                 .requestTimeout(30000)
                 .threadPoolSize(8)
                 .maxBatchSize(20)
+                .batchExecutionTimeout(600_000)
                 .build();
 
         // 创建批处理器
@@ -38,7 +39,7 @@ public class BatchJobExample {
             batchJob.initialize();
             
             // 创建批量请求
-            List<BatchRequest> requests = createBatchRequests(100);
+            List<BatchRequest> requests = createBatchRequests(3);
             
             System.out.println("开始处理批量请求...");
             long startTime = System.currentTimeMillis();
@@ -47,7 +48,7 @@ public class BatchJobExample {
             CompletableFuture<BatchJobResult> future = batchJob.processBatch(requests);
             
             // 等待结果
-            BatchJobResult result = future.get(60, TimeUnit.SECONDS);
+            BatchJobResult result = future.get(config.getBatchExecutionTimeout(), TimeUnit.MILLISECONDS);
             
             long endTime = System.currentTimeMillis();
             System.out.println("批处理完成，耗时: " + (endTime - startTime) + "ms");
@@ -66,7 +67,7 @@ public class BatchJobExample {
             });
             
             // 等待回调完成
-            callbackFuture.get(60, TimeUnit.SECONDS);
+            callbackFuture.get(config.getBatchExecutionTimeout(), TimeUnit.MILLISECONDS);
             
         } catch (InterruptedException | ExecutionException | TimeoutException e) {
             System.err.println("批处理出错: " + e.getMessage());
