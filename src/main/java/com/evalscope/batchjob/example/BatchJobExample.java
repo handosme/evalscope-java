@@ -21,7 +21,7 @@ public class BatchJobExample {
     public static void main(String[] args) {
         // 创建配置
         BatchJobConfig config = BatchJobConfig.builder()
-                .apiEndpoint("https://www.baidu.com/")
+                .apiEndpoint("https://api.ihansen.org/")
                 .apiKey("your-api-key-here")
                 .maxConcurrentRequests(1)
                 .connectionTimeout(5000)

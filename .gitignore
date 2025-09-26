@@ -11,6 +11,7 @@
 /.claude/
 /.codebuddy/
 /.qoder/
+/.vscode/
 /target/
 /pos/
 /logs/
