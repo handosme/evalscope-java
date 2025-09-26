@@ -1,5 +1,6 @@
 package com.evalscope.batchjob.netty;
 
+import com.evalscope.batchjob.RequestCorrelationManager;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.FullHttpResponse;

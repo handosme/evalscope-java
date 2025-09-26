@@ -1,6 +1,7 @@
 package com.evalscope.batchjob.netty;
 
 import com.evalscope.batchjob.BatchJobConfig;
+import com.evalscope.batchjob.RequestCorrelationManager;
 import com.evalscope.batchjob.model.BatchRequest;
 import com.evalscope.batchjob.model.BatchResponse;
 import org.slf4j.Logger;
