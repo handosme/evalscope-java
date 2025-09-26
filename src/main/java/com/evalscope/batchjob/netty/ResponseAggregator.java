@@ -12,12 +12,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class ResponseAggregator {
     private final Map<String, BatchResponse> responses;
     private final Map<String, AtomicInteger> pendingResponses;
+    private final NettyBatchClient client;
     private final Map<String, AtomicInteger> expectedResponses;
 
     /**
      * 创建一个新的响应聚合器
      */
-    public ResponseAggregator() {
+    public ResponseAggregator(NettyBatchClient client) {
+        this.client = client;
         this.responses = new ConcurrentHashMap<>();
         this.pendingResponses = new ConcurrentHashMap<>();
         this.expectedResponses = new ConcurrentHashMap<>();
@@ -25,7 +27,7 @@ public class ResponseAggregator {
 
     /**
      * 注册一个新的批次
-     * 
+     *
      * @param batchId 批次ID
      * @param response 批处理响应
      * @param expectedCount 预期的响应数量
@@ -34,6 +36,14 @@ public class ResponseAggregator {
         responses.put(batchId, response);
         pendingResponses.put(batchId, new AtomicInteger(expectedCount));
         expectedResponses.put(batchId, new AtomicInteger(expectedCount));
+
+        // 如果没有预期响应，立即完成批次
+        if (expectedCount <= 0) {
+            response.complete();
+            if (client != null) {
+                client.handleResponse(batchId, response);
+            }
+        }
     }
 
     /**
@@ -48,7 +58,17 @@ public class ResponseAggregator {
         if (response != null) {
             response.addResponse(requestId, content);
             checkBatchCompletion(batchId);
+        } else {
+            if (batchId.startsWith("fallback-")) {
+                // 处理回退批次的特殊逻辑
+                Map.Entry<String, BatchResponse> entry = responses.entrySet().iterator().next();
+                response = entry.getValue();
+                batchId = entry.getKey();
+                response.addResponse(requestId, content);
+                checkBatchCompletion(batchId);
+            }
         }
+        // 如果找不到对应的批次，忽略响应（这通常意味着批次已被清理）
     }
 
     /**
@@ -89,14 +109,13 @@ public class ResponseAggregator {
 
     /**
      * 获取批次对应的客户端
-     * 
+     *
      * @param batchId 批次ID
      * @return Netty客户端
      */
     private NettyBatchClient getClientForBatch(String batchId) {
-        // 在实际应用中，可能需要维护一个批次ID到客户端的映射
-        // 这里简化处理，假设只有一个客户端
-        return null;
+        // 返回客户端实例
+        return client;
     }
 
     /**

@@ -3,6 +3,8 @@ package com.evalscope.batchjob.netty;
 import com.evalscope.batchjob.BatchJobConfig;
 import com.evalscope.batchjob.model.BatchRequest;
 import com.evalscope.batchjob.model.BatchResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.*;
@@ -31,8 +33,11 @@ import java.util.function.Consumer;
  * 支持高并发、异步非阻塞IO，用于大批量API调用
  */
 public class NettyBatchClient {
+    private static final Logger logger = LoggerFactory.getLogger(NettyBatchClient.class);
+
     private final BatchJobConfig config;
     private final EventLoopGroup eventLoopGroup;
+    private final RequestCorrelationManager correlationManager;
     private final Map<String, Consumer<BatchResponse>> responseCallbacks;
     private final Map<String, Consumer<Throwable>> errorCallbacks;
     private final Semaphore requestSemaphore;
@@ -55,7 +60,8 @@ public class NettyBatchClient {
         this.errorCallbacks = new ConcurrentHashMap<>();
         this.requestSemaphore = new Semaphore(config.getMaxConcurrentRequests());
         this.activeConnections = new AtomicInteger(0);
-        this.responseAggregator = new ResponseAggregator();
+        this.responseAggregator = new ResponseAggregator(this);
+        this.correlationManager = new RequestCorrelationManager();
         
         // 创建线程池
         this.executorService = new ThreadPoolExecutor(
@@ -116,7 +122,7 @@ public class NettyBatchClient {
                         p.addLast(new HttpObjectAggregator(10 * 1024 * 1024)); // 10MB最大响应大小
                         
                         // 自定义处理器
-                        p.addLast(new BatchRequestHandler(NettyBatchClient.this, responseAggregator));
+                        p.addLast(new BatchRequestHandler(NettyBatchClient.this, responseAggregator, correlationManager));
                     }
                 });
             
@@ -133,11 +139,35 @@ public class NettyBatchClient {
      * 关闭客户端，释放资源
      */
     public void shutdown() {
-        if (channel != null) {
+        logger.info("正在关闭NettyBatchClient，等待活跃连接完成，当前活跃连接数: {}", getActiveConnections());
+
+        // 首先停止接收新请求
+        if (channel != null && channel.isActive()) {
             channel.close();
         }
-        eventLoopGroup.shutdownGracefully();
-        executorService.shutdown();
+
+        // 等待执行器中的任务完成（最多等待30秒）
+        try {
+            if (!executorService.awaitTermination(30, TimeUnit.SECONDS)) {
+                logger.warn("等待执行器关闭超时，强制关闭");
+                executorService.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            logger.warn("等待执行器关闭被中断，强制关闭");
+            executorService.shutdownNow();
+        }
+
+        // 优雅关闭事件循环组
+        try {
+            if (!eventLoopGroup.shutdownGracefully(5, 10, TimeUnit.SECONDS).await(15, TimeUnit.SECONDS)) {
+                logger.warn("事件循环组关闭超时，强制关闭");
+            }
+        } catch (InterruptedException e) {
+            logger.warn("等待事件循环组关闭被中断，强制关闭");
+            eventLoopGroup.shutdownNow();
+        }
+
+        logger.info("NettyBatchClient已关闭");
     }
 
     /**
@@ -203,34 +233,65 @@ public class NettyBatchClient {
 
     /**
      * 发送单个请求
-     * 
+     *
      * @param batchId 批次ID
      * @param request 请求
      */
     private void sendSingleRequest(String batchId, BatchRequest request) {
         try {
-            // 构建HTTP请求
-            FullHttpRequest httpRequest = buildHttpRequest(request);
-            
+            // 注册请求关联
+            String correlatedRequestId = correlationManager.registerRequest(batchId, request);
+
+            // 构建HTTP请求，并将关联的ID放入头部
+            FullHttpRequest httpRequest = buildHttpRequest(request, correlatedRequestId);
+
             // 发送请求
             channel.writeAndFlush(httpRequest).addListener((ChannelFutureListener) future -> {
                 if (!future.isSuccess()) {
-                    responseAggregator.addError(batchId, request.getRequestId(), future.cause().getMessage());
+                    handleSendError(correlatedRequestId, future.cause());
                 }
             });
-            
+
         } catch (Exception e) {
+            // 注册失败或发送前异常的处理
+            if (request.getRequestId() != null) {
+                correlationManager.completeRequest(request.getRequestId());
+            }
             responseAggregator.addError(batchId, request.getRequestId(), e.getMessage());
         }
     }
 
     /**
+     * 处理发送请求时的错误
+     *
+     * @param correlatedRequestId 关联的请求ID
+     * @param cause 错误原因
+     */
+    private void handleSendError(String correlatedRequestId, Throwable cause) {
+        // 找出关联的请求信息
+        RequestCorrelationManager.OutstandingRequest outstandingRequest = correlationManager.completeRequest(correlatedRequestId);
+
+        if (outstandingRequest != null) {
+            // 将错误添加到聚合器中
+            responseAggregator.addError(
+                    outstandingRequest.getBatchId(),
+                    outstandingRequest.getRequestId(),
+                    "发送请求失败: " + cause.getMessage()
+            );
+        } else {
+            // 如果找不到对应的请求，记录日志（这个不应该发生）
+            logger.warn("收到发送请求失败的回调，但找不到对应的关联请求: {}", correlatedRequestId, cause);
+        }
+    }
+
+    /**
      * 构建HTTP请求
-     * 
+     *
      * @param request 批处理请求
+     * @param correlatedRequestId 关联的请求ID（用于响应关联）
      * @return HTTP请求
      */
-    private FullHttpRequest buildHttpRequest(BatchRequest request) {
+    private FullHttpRequest buildHttpRequest(BatchRequest request, String correlatedRequestId) {
         // 这里根据实际API格式构建请求
         // 示例实现，实际应用中需要根据目标API调整
         String jsonPayload = String.format(
@@ -251,8 +312,14 @@ public class NettyBatchClient {
         httpRequest.headers().set(HttpHeaderNames.HOST, uri.getHost());
         httpRequest.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
         httpRequest.headers().set(HttpHeaderNames.CONTENT_TYPE, HttpHeaderValues.APPLICATION_JSON);
-        httpRequest.headers().set("X-Request-ID", request.getRequestId());
-        httpRequest.headers().set("X-Batch-ID", request.getRequestId());
+
+        // 使用我们内部关联的请求ID（这取代了原来的随机或依赖服务端头部的做法）
+        httpRequest.headers().set("X-Request-ID", correlatedRequestId);
+
+        // 优先使用原始请求ID，如果没有则使用关联ID
+        if (request.getRequestId() != null && !request.getRequestId().equals(correlatedRequestId)) {
+            httpRequest.headers().set("X-Original-Request-ID", request.getRequestId());
+        }
         
         // 如果有API密钥，添加授权头
         if (config.getApiKey() != null && !config.getApiKey().isEmpty()) {
@@ -280,8 +347,21 @@ public class NettyBatchClient {
     }
 
     /**
-     * 处理错误
-     * 
+     * 处理连接错误
+     * 当网络层发生异常时，处理所有未完成的请求
+     *
+     * @param cause 错误原因
+     */
+    public void handleConnectionError(Throwable cause) {
+        logger.error("网络连接错误影响到未完成请求: {}", cause.getMessage(), cause);
+
+        // 目前不立即标记所有请求为失败，因为错误可能是临时的
+        // 具体请求的关联错误会在响应处理层处理
+    }
+
+    /**
+     * 处理来自HTTP响应的错误
+     *
      * @param batchId 批次ID
      * @param error 错误
      */
