@@ -55,12 +55,12 @@ public class BatchJobExample {
             
             // 方法2：使用回调
             System.out.println("\n使用回调方式处理批量请求...");
-            startTime = System.currentTimeMillis();
+            final long callbackStartTime = System.currentTimeMillis();
             
             CompletableFuture<Void> callbackFuture = new CompletableFuture<>();
             batchJob.processBatchWithCallback(requests, callbackResult -> {
                 long callbackEndTime = System.currentTimeMillis();
-                System.out.println("回调方式批处理完成，耗时: " + (callbackEndTime - startTime) + "ms");
+                System.out.println("回调方式批处理完成，耗时: " + (callbackEndTime - callbackStartTime) + "ms");
                 System.out.println(callbackResult.getSummary());
                 callbackFuture.complete(null);
             });
