@@ -6,6 +6,8 @@ import com.evalscope.model.ModelResponse;
 import com.evalscope.evaluator.TestCase;
 import com.evalscope.config.DatasetConfig;
 import com.evalscope.data.DataLoaderFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.HashMap;
@@ -15,6 +17,7 @@ import java.util.Random;
 import java.io.IOException;
 
 public class PerformanceBenchmark implements Benchmark {
+    private static final Logger logger = LoggerFactory.getLogger(PerformanceBenchmark.class);
     private static final String BENCHMARK_NAME = "PerformanceBenchmark";
     private static final String BENCHMARK_TYPE = "performance";
 
@@ -66,12 +69,12 @@ public class PerformanceBenchmark implements Benchmark {
                 prompts.add(DEFAULT_TEST_PROMPT);
             }
 
-            System.out.println("Using " + prompts.size() + " prompts for performance testing");
-            System.out.println("Warmup iterations: " + warmupIterations);
-            System.out.println("Test iterations: " + testIterations);
+            logger.info("Using {} prompts for performance testing", prompts.size());
+            logger.info("Warmup iterations: {}", warmupIterations);
+            logger.info("Test iterations: {}", testIterations);
 
             // Warmup phase - 随机选择prompt
-            System.out.println("Running warmup phase (" + warmupIterations + " iterations)...");
+            logger.info("Running warmup phase ({} iterations)...", warmupIterations);
             Random random = new Random();
             for (int i = 0; i < warmupIterations; i++) {
                 String prompt = prompts.get(random.nextInt(prompts.size()));
@@ -79,7 +82,7 @@ public class PerformanceBenchmark implements Benchmark {
             }
 
             // Actual benchmarking
-            System.out.println("Running performance benchmark (" + testIterations + " iterations)...");
+            logger.info("Running performance benchmark ({} iterations)...", testIterations);
             List<Long> responseTimes = new ArrayList<>();
             List<Long> tokenCounts = new ArrayList<>();
             int successfulRequests = 0;
@@ -109,7 +112,7 @@ public class PerformanceBenchmark implements Benchmark {
                 }
 
                 if ((i + 1) % 10 == 0) {
-                    System.out.println("Completed " + (i + 1) + "/" + testIterations + " iterations");
+                    logger.info("Completed {}/{} iterations", i + 1, testIterations);
                 }
             }
 
@@ -121,9 +124,9 @@ public class PerformanceBenchmark implements Benchmark {
             result.setMetrics(metrics);
             result.setSuccess(true);
 
-            System.out.println("Performance benchmark completed successfully!");
-            System.out.println("Average response time: " + metrics.get("average_response_time_ms") + " ms");
-            System.out.println("Requests per second: " + metrics.get("requests_per_second"));
+            logger.info("Performance benchmark completed successfully!");
+            logger.info("Average response time: {} ms", metrics.get("average_response_time_ms"));
+            logger.info("Requests per second: {}", metrics.get("requests_per_second"));
 
         } catch (Exception e) {
             result.setSuccess(false);
@@ -223,7 +226,7 @@ public class PerformanceBenchmark implements Benchmark {
         // line_by_line模式：加载datasetPath指定的文件
         String datasetPath = getParameter(parameters, "datasetPath", null);
         if (datasetPath == null || datasetPath.isEmpty()) {
-            System.err.println("line_by_line dataset specified but datasetPath is missing, using default prompt");
+            logger.warn("line_by_line dataset specified but datasetPath is missing, using default prompt");
             return prompts;
         }
 
@@ -248,11 +251,11 @@ public class PerformanceBenchmark implements Benchmark {
                 prompts.add(testCase.getInput());
             }
 
-            System.out.println("Loaded " + prompts.size() + " prompts from line_by_line dataset: " + datasetPath);
+            logger.info("Loaded {} prompts from line_by_line dataset: {}", prompts.size(), datasetPath);
 
         } catch (Exception e) {
-            System.err.println("Failed to load line_by_line dataset from " + datasetPath + ": " + e.getMessage());
-            System.err.println("Falling back to default prompt");
+            logger.error("Failed to load line_by_line dataset from {}: {}", datasetPath, e.getMessage());
+            logger.warn("Falling back to default prompt");
             // fallback已经在方法开始时处理
         }
 

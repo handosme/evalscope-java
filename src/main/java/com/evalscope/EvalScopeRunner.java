@@ -13,7 +13,11 @@ import java.util.Map;
 import java.util.List;
 import java.util.ArrayList;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class EvalScopeRunner {
+    private static final Logger logger = LoggerFactory.getLogger(EvalScopeRunner.class);
     private final IConfigManager configManager;
     private final EvaluationRunner evaluationRunner;
 
@@ -29,9 +33,9 @@ public class EvalScopeRunner {
     }
 
     public static void main(String[] args) {
-        System.out.println("=== EvalScope Java ===");
-        System.out.println("AI Model Evaluation Framework");
-        System.out.println();
+        logger.info("=== EvalScope Java ===");
+        logger.info("AI Model Evaluation Framework");
+        logger.info("");
 
         // Parse command line arguments
         CommandLineArgs cmdArgs = ArgumentParser.parse(args);
@@ -44,7 +48,7 @@ public class EvalScopeRunner {
 
         // Show version if requested
         if (cmdArgs.getVersion() != null) {
-            System.out.println("EvalScope Java Version: " + cmdArgs.getVersion());
+            logger.info("EvalScope Java Version: {}", cmdArgs.getVersion());
             System.exit(0);
         }
 
@@ -54,25 +58,51 @@ public class EvalScopeRunner {
             // Configure based on command line arguments
             runner.configureFromCommandLine(cmdArgs);
 
+            // Handle application run-mode globally
+            String runMode = cmdArgs.getRunMode();
+            if (runMode != null && !runMode.isEmpty()) {
+                logger.info("Running in application mode: {}", runMode);
+                // Apply application-level mode settings
+                switch (runMode.toLowerCase()) {
+                    case "test":
+                        // Test mode: reduce concurrent requests, increase logging
+                        logger.info("Test mode: Reducing concurrent requests and enabling verbose logging");
+                        break;
+                    case "debug":
+                        // Debug mode: enable debugging features
+                        logger.info("Debug mode: Enabling debugging features");
+                        cmdArgs.setDebug(true);
+                        cmdArgs.setVerbose(true);
+                        break;
+                    case "production":
+                        // Production mode: use conservative settings
+                        logger.info("Production mode: Using conservative settings");
+                        break;
+                    default:
+                        logger.info("Application mode: {} (using default settings)", runMode);
+                        break;
+                }
+            }
+
             if (args.length == 0 || (cmdArgs.getConfigFile() == null && cmdArgs.getUrl() == null && cmdArgs.getApiBaseUrl() == null)) {
                 // Run with default configuration when no specific args provided
-                System.out.println("Running with default configuration...");
+                logger.info("Running with default configuration...");
                 runner.runDefaultEvaluation();
             } else {
                 // Run with command line configuration
                 String evaluationType = cmdArgs.getEvaluationType() != null ? cmdArgs.getEvaluationType() : "cli_configured";
-                System.out.println("Running evaluation with command line configuration: " + evaluationType);
+                logger.info("Running evaluation with command line configuration: {}", evaluationType);
                 runner.runEvaluationWithArgs(cmdArgs);
             }
         } catch (Exception e) {
-            System.err.println("Error: " + e.getMessage());
+            logger.error("Error: {}", e.getMessage());
             e.printStackTrace();
             System.exit(1);
         } finally {
             runner.shutdown();
         }
 
-        System.out.println("Evaluation completed successfully!");
+        logger.info("Evaluation completed successfully!");
     }
 
     public EvaluationReport runEvaluation(String evaluationName) {
@@ -85,12 +115,12 @@ public class EvalScopeRunner {
         EvaluationReport report = evaluationRunner.runEvaluation("default_evaluation");
 
         if (!report.hasResults()) {
-            System.out.println("Warning: No evaluation results generated. Check configuration.");
+            logger.warn("Warning: No evaluation results generated. Check configuration.");
         }
     }
 
     private void createDefaultConfigs() {
-        System.out.println("Setting up default configuration...");
+        logger.info("Setting up default configuration...");
 
         // Create default model configuration
         com.evalscope.config.ModelConfig defaultModel = new com.evalscope.config.ModelConfig(
@@ -113,7 +143,7 @@ public class EvalScopeRunner {
         defaultEval.setSaveResults(true);
         configManager.addEvaluationConfig(defaultEval);
 
-        System.out.println("Default configuration created successfully.");
+        logger.info("Default configuration created successfully.");
     }
 
     public void shutdown() {
@@ -130,34 +160,34 @@ public class EvalScopeRunner {
      * Configure EvalScope from command line arguments
      */
     public void configureFromCommandLine(CommandLineArgs cmdArgs) {
-        System.out.println("Configuring from command line arguments...");
+        logger.info("Configuring from command line arguments...");
 
         // Set log level
         if (cmdArgs.getLogLevel() != null) {
             // This would need to be implemented in the logging configuration
-            System.out.println("Setting log level to: " + cmdArgs.getLogLevel());
+            logger.info("Setting log level to: {}", cmdArgs.getLogLevel());
         }
 
         // Handle debug and verbose modes
         if (cmdArgs.getDebug() != null && cmdArgs.getDebug()) {
-            System.out.println("Debug mode enabled");
+            logger.info("Debug mode enabled");
         }
         if (cmdArgs.getVerbose() != null && cmdArgs.getVerbose()) {
-            System.out.println("Verbose mode enabled");
+            logger.info("Verbose mode enabled");
         }
 
         // Handle dry-run mode
         if (cmdArgs.getDryRun() != null && cmdArgs.getDryRun()) {
-            System.out.println("Dry run mode - no actual requests will be made");
+            logger.info("Dry run mode - no actual requests will be made");
         }
 
         // Load config file if specified
         if (cmdArgs.getConfigFile() != null) {
-            System.out.println("Loading configuration from: " + cmdArgs.getConfigFile());
+            logger.info("Loading configuration from: {}", cmdArgs.getConfigFile());
             // This would need to be implemented to load from specified config file
         }
 
-        System.out.println("Command line configuration applied.");
+        logger.info("Command line configuration applied.");
     }
 
     /**
@@ -270,8 +300,14 @@ public class EvalScopeRunner {
         if (cmdArgs.getIncludeAccuracy() != null) {
             evalConfig.addParameter("include_accuracy", cmdArgs.getIncludeAccuracy());
         }
-        if (cmdArgs.getRunModel() != null) {
+        // Handle run-model parameter
+        if (cmdArgs.getRunModel() != null && !cmdArgs.getRunModel().isEmpty()) {
             evalConfig.addParameter("run_model", cmdArgs.getRunModel());
+        }
+
+        // Handle run-mode parameter
+        if (cmdArgs.getRunMode() != null && !cmdArgs.getRunMode().isEmpty()) {
+            evalConfig.addParameter("run_mode", cmdArgs.getRunMode());
         }
 
         // Apply mode parameters

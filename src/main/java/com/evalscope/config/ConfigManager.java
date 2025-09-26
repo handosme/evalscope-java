@@ -14,8 +14,11 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.HashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ConfigManager implements IConfigManager {
+    private static final Logger logger = LoggerFactory.getLogger(ConfigManager.class);
     private static final String YAM_CONFIG_FILE = "application.yaml";
     private static final String DEFAULT_CONFIG_FILE = "application.conf";
 
@@ -43,16 +46,16 @@ public class ConfigManager implements IConfigManager {
         try (InputStream yamlStream = getClass().getClassLoader().getResourceAsStream(YAM_CONFIG_FILE)) {
             if (yamlStream != null) {
                 this.typesafeConfig = ConfigFactory.parseResources(YAM_CONFIG_FILE).withFallback(ConfigFactory.load());
-                System.out.println("Loaded configuration from " + YAM_CONFIG_FILE);
+                logger.info("Loaded configuration from {}", YAM_CONFIG_FILE);
             } else {
                 // Fallback to application.conf
                 this.typesafeConfig = ConfigFactory.load();
-                System.out.println("Loaded configuration from " + DEFAULT_CONFIG_FILE);
+                logger.info("Loaded configuration from {}", DEFAULT_CONFIG_FILE);
             }
         } catch (Exception e) {
-            System.err.println("Failed to load " + YAM_CONFIG_FILE + ", using default: " + e.getMessage());
+            logger.warn("Failed to load {}, using default: {}", YAM_CONFIG_FILE, e.getMessage());
             this.typesafeConfig = ConfigFactory.load();
-            System.out.println("Loaded configuration from " + DEFAULT_CONFIG_FILE);
+            logger.info("Loaded configuration from {}", DEFAULT_CONFIG_FILE);
         }
         parseConfigs();
     }
@@ -74,7 +77,7 @@ public class ConfigManager implements IConfigManager {
             }
             parseConfigs();
         } catch (Exception e) {
-            System.err.println("Failed to load config from " + configFilePath + ", using default: " + e.getMessage());
+            logger.error("Failed to load config from {}, using default: {}", configFilePath, e.getMessage());
             loadDefaultConfig();
         }
     }
@@ -97,11 +100,11 @@ public class ConfigManager implements IConfigManager {
                         ModelConfig config = parseModelConfig(modelId, modelConfig);
                         modelConfigs.put(modelId, config);
                     } catch (Exception e) {
-                        System.err.println("Failed to parse model config for " + modelId + ": " + e.getMessage());
+                        logger.error("Failed to parse model config for {}: {}", modelId, e.getMessage());
                     }
                 });
             } catch (Exception e) {
-                System.err.println("Failed to parse model configs: " + e.getMessage());
+                logger.error("Failed to parse model configs: {}", e.getMessage());
             }
         }
     }
@@ -142,11 +145,11 @@ public class ConfigManager implements IConfigManager {
                         EvaluationConfig config = parseEvaluationConfig(evaluationName, evalConfig);
                         evaluationConfigs.put(evaluationName, config);
                     } catch (Exception e) {
-                        System.err.println("Failed to parse evaluation config for " + evaluationName + ": " + e.getMessage());
+                        logger.error("Failed to parse evaluation config for {}: {}", evaluationName, e.getMessage());
                     }
                 });
             } catch (Exception e) {
-                System.err.println("Failed to parse evaluation configs: " + e.getMessage());
+                logger.error("Failed to parse evaluation configs: {}", e.getMessage());
             }
         }
     }

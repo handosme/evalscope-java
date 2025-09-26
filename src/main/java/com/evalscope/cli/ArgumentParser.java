@@ -192,8 +192,9 @@ public class ArgumentParser {
         if (argMap.containsKey("include-accuracy")) {
             cmdArgs.setIncludeAccuracy(parseBoolean(argMap.get("include-accuracy"), true));
         }
-        if (argMap.containsKey("run-model")) {
-            cmdArgs.setRunModel(argMap.get("run-model"));
+        if (argMap.containsKey("run-model") || argMap.containsKey("run-mod")) {
+            String runModelValue = argMap.containsKey("run-model") ? argMap.get("run-model") : argMap.get("run-mod");
+            cmdArgs.setRunModel(runModelValue);
         }
     }
 
@@ -312,7 +313,8 @@ public class ArgumentParser {
         System.out.println("  --metrics <metrics>            Comma-separated metrics");
         System.out.println("  --include-latency <bool>       Include latency metrics (default: true)");
         System.out.println("  --include-accuracy <bool>      Include accuracy metrics (default: true)");
-        System.out.println("  --run-model <mode>             Run mode for models: all|evaluation|benchmark (default: all)");
+        System.out.println("  --run-model <mode>, --run-mod <mode> Run mode for models: all|evaluation|benchmark (default: all)");
+        System.out.println("  --run-mode <mode>              Application run mode: test|debug|production|default (default: default)");
         System.out.println();
         System.out.println("Authentication Parameters:");
         System.out.println("  --auth-type <type>             Authentication type");

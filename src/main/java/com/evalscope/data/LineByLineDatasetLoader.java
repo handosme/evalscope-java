@@ -10,8 +10,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import com.fasterxml.jackson.databind.JsonNode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class LineByLineDatasetLoader implements DataLoader {
+    private static final Logger logger = LoggerFactory.getLogger(LineByLineDatasetLoader.class);
     private static final String LOADER_NAME = "line_by_line";
 
     @Override
@@ -25,7 +28,7 @@ public class LineByLineDatasetLoader implements DataLoader {
             throw new IOException("Dataset path cannot be null or empty");
         }
 
-        System.out.println("Loading line-by-line dataset from: " + filePath);
+        logger.info("Loading line-by-line dataset from: {}", filePath);
 
         // Try to find the file in different locations
         File datasetFile = findDatasetFile(filePath);
@@ -74,7 +77,8 @@ public class LineByLineDatasetLoader implements DataLoader {
         int skipLines = (int) parameters.getOrDefault("skip_lines", 0);
         String linePrefix = (String) parameters.getOrDefault("line_prefix", "");
 
-        System.out.println("Loading dataset with params - shuffle: " + shuffle + ", limit: " + limit + ", skip_lines: " + skipLines);
+        logger.info("Loading dataset with params - shuffle: {}, limit: {}, skip_lines: {}", 
+            shuffle, limit, skipLines);
 
         try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
             String line;
@@ -127,7 +131,7 @@ public class LineByLineDatasetLoader implements DataLoader {
             Collections.shuffle(testCases);
         }
 
-        System.out.println("Loaded " + testCases.size() + " test cases from dataset: " + file.getName());
+        logger.info("Loaded {} test cases from dataset: {}", testCases.size(), file.getName());
         return testCases;
     }
 

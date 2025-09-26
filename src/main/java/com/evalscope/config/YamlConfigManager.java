@@ -16,11 +16,14 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.Properties;
 import org.yaml.snakeyaml.Yaml;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Enhanced ConfigManager with YAML support
  */
 public class YamlConfigManager implements IConfigManager {
+    private static final Logger logger = LoggerFactory.getLogger(YamlConfigManager.class);
     private static final String YAML_CONFIG_FILE = "application.yaml";
     private static final String DEFAULT_CONFIG_FILE = "application.conf";
 
@@ -48,16 +51,16 @@ public class YamlConfigManager implements IConfigManager {
         try (InputStream yamlStream = getClass().getClassLoader().getResourceAsStream(YAML_CONFIG_FILE)) {
             if (yamlStream != null) {
                 parseYamlConfig(yamlStream);
-                System.out.println("Loaded configuration from " + YAML_CONFIG_FILE);
+                logger.info("Loaded configuration from {}", YAML_CONFIG_FILE);
                 return;
             }
         } catch (Exception e) {
-            System.err.println("Failed to load " + YAML_CONFIG_FILE + ", trying fallback: " + e.getMessage());
+            logger.error("Failed to load {}, trying fallback: {}", YAML_CONFIG_FILE, e.getMessage());
         }
 
         // Fallback to application.conf
         this.typesafeConfig = ConfigFactory.load();
-        System.out.println("Loaded configuration from " + DEFAULT_CONFIG_FILE);
+        logger.info("Loaded configuration from {}", DEFAULT_CONFIG_FILE);
         parseConfigs();
     }
 
@@ -78,9 +81,9 @@ public class YamlConfigManager implements IConfigManager {
                     try {
                         ModelConfig config = parseYamlModelData(modelId, modelData);
                         modelConfigs.put(modelId, config);
-                        System.out.println("Loaded YAML model configuration: " + modelId);
+                        logger.info("Loaded YAML model configuration: {}", modelId);
                     } catch (Exception e) {
-                        System.err.println("Failed to parse YAML model config for " + modelId + ": " + e.getMessage());
+                        logger.error("Failed to parse YAML model config for {}: {}", modelId, e.getMessage());
                     }
                 }
             }
@@ -95,9 +98,9 @@ public class YamlConfigManager implements IConfigManager {
                     try {
                         EvaluationConfig config = parseYamlEvaluationData(evaluationName, evalData);
                         evaluationConfigs.put(evaluationName, config);
-                        System.out.println("Loaded YAML evaluation configuration: " + evaluationName);
+                        logger.info("Loaded YAML evaluation configuration: {}", evaluationName);
                     } catch (Exception e) {
-                        System.err.println("Failed to parse YAML evaluation config for " + evaluationName + ": " + e.getMessage());
+                        logger.error("Failed to parse YAML evaluation config for {}: {}", evaluationName, e.getMessage());
                     }
                 }
             }
@@ -112,9 +115,9 @@ public class YamlConfigManager implements IConfigManager {
                     try {
                         DatasetConfig config = parseYamlDatasetData(datasetId, datasetData);
                         datasetConfigs.put(datasetId, config);
-                        System.out.println("Loaded YAML dataset configuration: " + datasetId);
+                        logger.info("Loaded YAML dataset configuration: {}", datasetId);
                     } catch (Exception e) {
-                        System.err.println("Failed to parse YAML dataset config for " + datasetId + ": " + e.getMessage());
+                        logger.error("Failed to parse YAML dataset config for {}: {}", datasetId, e.getMessage());
                     }
                 }
             }
@@ -221,7 +224,7 @@ public class YamlConfigManager implements IConfigManager {
                 loadHoconFromFile(configFilePath);
             }
         } catch (Exception e) {
-            System.err.println("Failed to load config from " + configFilePath + ", using default: " + e.getMessage());
+            logger.error("Failed to load config from {}, using default: {}", configFilePath, e.getMessage());
             loadDefaultConfig();
         }
     }
@@ -242,7 +245,7 @@ public class YamlConfigManager implements IConfigManager {
             }
             parseConfigs();
         } catch (Exception e) {
-            System.err.println("Failed to load HOCON config: " + e.getMessage());
+            logger.error("Failed to load HOCON config: {}", e.getMessage());
             this.typesafeConfig = ConfigFactory.load();
             parseConfigs();
         }
@@ -267,11 +270,11 @@ public class YamlConfigManager implements IConfigManager {
                         ModelConfig config = parseModelConfig(modelId, modelConfig);
                         modelConfigs.put(modelId, config);
                     } catch (Exception e) {
-                        System.err.println("Failed to parse model config for " + modelId + ": " + e.getMessage());
+                        logger.error("Failed to parse model config for {}: {}", modelId, e.getMessage());
                     }
                 });
             } catch (Exception e) {
-                System.err.println("Failed to parse model configs: " + e.getMessage());
+                logger.error("Failed to parse model configs: {}", e.getMessage());
             }
         }
     }
@@ -312,11 +315,11 @@ public class YamlConfigManager implements IConfigManager {
                         EvaluationConfig config = parseEvaluationConfig(evaluationName, evalConfig);
                         evaluationConfigs.put(evaluationName, config);
                     } catch (Exception e) {
-                        System.err.println("Failed to parse evaluation config for " + evaluationName + ": " + e.getMessage());
+                        logger.error("Failed to parse evaluation config for {}: {}", evaluationName, e.getMessage());
                     }
                 });
             } catch (Exception e) {
-                System.err.println("Failed to parse evaluation configs: " + e.getMessage());
+                logger.error("Failed to parse evaluation configs: {}", e.getMessage());
             }
         }
     }

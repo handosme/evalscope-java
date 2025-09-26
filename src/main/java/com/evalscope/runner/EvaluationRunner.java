@@ -21,8 +21,11 @@ import java.util.Map;
 import java.util.ArrayList;
 import java.util.concurrent.*;
 import java.io.IOException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class EvaluationRunner {
+    private static final Logger logger = LoggerFactory.getLogger(EvaluationRunner.class);
     private final com.evalscope.config.IConfigManager configManager;
     private final ExecutorService executorService;
 
@@ -79,19 +82,19 @@ public class EvaluationRunner {
 
                     // Validate runModel value
                     if (!Arrays.asList("all", "evaluation", "benchmark").contains(runModelStrategy)) {
-                        System.err.println("Invalid run_model parameter: " + runModelStrategy + ". Using default: all");
+                        logger.warn("Invalid run_model parameter: {}. Using default: all", runModelStrategy);
                         runModelStrategy = "all";
                     }
 
                     switch (runModelStrategy) {
                         case "evaluation":
                             // Only run evaluation, skip benchmarks
-                            System.out.println("Running model evaluation (skipping benchmarks due to --run-model evaluation)");
+                            logger.info("Running model evaluation (skipping benchmarks due to --run-model evaluation)");
                             runModelEvaluation(model, config, report);
                             break;
                         case "benchmark":
                             // Only run benchmarks, skip evaluation
-                            System.out.println("Running model benchmarks (skipping evaluation due to --run-model benchmark)");
+                            logger.info("Running model benchmarks (skipping evaluation due to --run-model benchmark)");
                             runModelBenchmarks(model, config, report);
                             break;
                         case "all":
@@ -103,7 +106,7 @@ public class EvaluationRunner {
                     }
 
                 } catch (Exception e) {
-                    System.err.println("Error evaluating model " + modelId + ": " + e.getMessage());
+                    logger.error("Error evaluating model {}: {}", modelId, e.getMessage());
                 }
             }
 
