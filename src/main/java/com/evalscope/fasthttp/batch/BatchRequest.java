@@ -27,6 +27,28 @@ public class BatchRequest {
         return requests;
     }
 
+    public BatchRequest addRequest(String requestId, Request request) {
+        List<RequestWrapper> newRequests = new ArrayList<>(requests);
+        newRequests.add(new RequestWrapper(requestId, request, false));
+        BatchRequest.Builder builder = BatchRequest.builder()
+                .batchId(batchId)
+                .maxConcurrent(maxConcurrent)
+                .batchTimeout(batchTimeoutMs)
+                .requestTimeout(requestTimeoutMs);
+
+        for (RequestWrapper existing : newRequests) {
+            builder.addRequest(existing.requestId(), existing.request(), existing.isCritical());
+        }
+
+        return builder.build();
+    }
+
+    public static class RequestNotFoundException extends RuntimeException {
+        public RequestNotFoundException(String message) {
+            super(message);
+        }
+    }
+
     public int maxConcurrent() {
         return maxConcurrent;
     }

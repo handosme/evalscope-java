@@ -34,7 +34,7 @@ import java.util.logging.Level;
  * - Overflow handling strategies (queue wait, direct reject)
  * - Connection health monitoring
  */
-public class PoolableFastHttpClient implements AutoCloseable {
+public class PoolableFastHttpClient extends FastHttpClient {
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(PoolableFastHttpClient.class.getName());
 
     // Netty channel attribute to track connection source
@@ -46,7 +46,7 @@ public class PoolableFastHttpClient implements AutoCloseable {
     private final ConnectionPoolConfig config;
 
     private PoolableFastHttpClient(Builder builder) {
-
+        super(builder);
         // Create connection pool with provided configuration
         ConnectionPoolConfig poolConfig = builder.connectionPoolConfig;
         if (poolConfig == null) {
@@ -185,7 +185,7 @@ public class PoolableFastHttpClient implements AutoCloseable {
         }
 
         String query = uri.getRawQuery();
-        if (query != null \u0026\u0026 !query.isEmpty()) {
+        if (query != null && !query.isEmpty()) {
             path = path + "?" + query;
         }
 
@@ -218,11 +218,11 @@ public class PoolableFastHttpClient implements AutoCloseable {
             httpRequest.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
         }
 
-        if (request.body() != null \u0026\u0026 !httpRequest.headers().contains(HttpHeaderNames.CONTENT_LENGTH)) {
+        if (request.body() != null && !httpRequest.headers().contains(HttpHeaderNames.CONTENT_LENGTH)) {
             httpRequest.headers().set(HttpHeaderNames.CONTENT_LENGTH, content.readableBytes());
         }
 
-        if (request.body() != null \u0026\u0026 !httpRequest.headers().contains(HttpHeaderNames.CONTENT_TYPE)) {
+        if (request.body() != null && !httpRequest.headers().contains(HttpHeaderNames.CONTENT_TYPE)) {
             httpRequest.headers().set(HttpHeaderNames.CONTENT_TYPE, "application/x-www-form-urlencoded");
         }
 
@@ -305,7 +305,7 @@ public class PoolableFastHttpClient implements AutoCloseable {
                     httpResponse = (HttpResponse) msg;
 
                     // Check if we should keep the connection alive
-                    boolean keepAlive = HttpUtil.isKeepAlive(httpResponse) \u0026\u0026 client.getConnectionPoolConfig().isEnableConnectionReuse();
+                    boolean keepAlive = HttpUtil.isKeepAlive(httpResponse) && client.getConnectionPoolConfig().isEnableConnectionReuse();
 
                     responseBuilder = new Response.Builder()
                             .request(request)
@@ -379,7 +379,7 @@ public class PoolableFastHttpClient implements AutoCloseable {
     /**
      * Builder for PoolableFastHttpClient
      */
-    public static class Builder {
+    public static class Builder extends FastHttpClient.Builder {
         private ConnectionPoolConfig connectionPoolConfig;
 
         public Builder connectionPoolConfig(ConnectionPoolConfig config) {
@@ -391,6 +391,7 @@ public class PoolableFastHttpClient implements AutoCloseable {
             return connectionPoolConfig;
         }
 
+        @Override
         public PoolableFastHttpClient build() {
             return new PoolableFastHttpClient(this);
         }

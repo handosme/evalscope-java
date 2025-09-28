@@ -1,15 +1,14 @@
 package com.evalscope.fasthttp.client;
 
+import com.evalscope.fasthttp.exception.FastHttpException;
 import com.evalscope.fasthttp.http.Request;
 import com.evalscope.fasthttp.http.Response;
-import com.evalscope.fasthttp.exception.FastHttpException;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.codec.http.*;
-import io.netty.handler.codec.http.HttpVersion;
+import io.netty.handler.codec.http.HttpClientCodec;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
@@ -20,7 +19,10 @@ import io.netty.util.concurrent.Future;
 import javax.net.ssl.SSLException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class FastHttpClient implements AutoCloseable {
@@ -29,7 +31,7 @@ public class FastHttpClient implements AutoCloseable {
     private final ExecutorService executor;
     private final AtomicBoolean closed = new AtomicBoolean(false);
 
-    private FastHttpClient(Builder builder) {
+    protected FastHttpClient(Builder builder) {
         this.eventLoopGroup = builder.eventLoopGroup;
         this.executor = builder.executor;
 
@@ -139,7 +141,14 @@ public class FastHttpClient implements AutoCloseable {
         private EventLoopGroup eventLoopGroup;
         private ExecutorService executor;
 
-        public Builder() {}
+        public Builder() {
+            if (eventLoopGroup == null) {
+                eventLoopGroup = new NioEventLoopGroup();
+            }
+            if (executor == null) {
+                executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+            }
+        }
 
         public Builder eventLoopGroup(EventLoopGroup eventLoopGroup) {
             this.eventLoopGroup = eventLoopGroup;

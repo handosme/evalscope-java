@@ -54,7 +54,7 @@ public class ConnectionPoolExample {
 
         try {
             Request request = Request.builder()
-                    .url("https://httpbin.org/get")
+                    .url("https://api.ihansen.org/net")
                     .get()
                     .build();
 
@@ -255,7 +255,7 @@ public class ConnectionPoolExample {
                     Response response = future.get(10, TimeUnit.SECONDS);
                     if (response.isSuccessful()) successful++;
                 } catch (java.util.concurrent.ExecutionException e) {
-                    if (e.getCause() != null \u0026\u0026 e.getCause().getMessage().contains("Connection pool is full")) {
+                    if (e.getCause() != null && e.getCause().getMessage().contains("Connection pool is full")) {
                         rejected++;
                         System.out.println("✓ Request rejected due to pool being full: " + e.getCause().getMessage());
                     } else {
@@ -309,9 +309,7 @@ public class ConnectionPoolExample {
                         .build());
             }
 
-            try (BatchExecutor batchExecutor = BatchExecutor.createWithClient(new PoolableFastHttpClient.Builder()
-                    .connectionPoolConfig(config)
-                    .build())) {
+            try (BatchExecutor batchExecutor = BatchExecutor.createWithClient(client)) {
 
                 CompletableFuture<BatchResult> resultFuture = batchExecutor.executeAsync(batchRequest);
                 BatchResult result = resultFuture.get(30, TimeUnit.SECONDS);
@@ -325,9 +323,7 @@ public class ConnectionPoolExample {
                 System.out.println("  Termination reason: " + result.terminationReason());
 
                 // Show connection pool final stats
-                PoolableFastHttpClient poolClient = (PoolableFastHttpClient) batchExecutor.getClass()
-                        .getDeclaredMethod("getHttpClient").invoke(batchExecutor);
-                System.out.println("✓ Final pool stats: " + poolClient.getPoolStats());
+                System.out.println("✓ Final pool stats: " + client.getPoolStats());
 
                 // Show individual request failures
                 for (BatchResult.Result individualResult : result.results()) {
